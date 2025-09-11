@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ConfigManagementPlugin
+metadata:
+  name: odin
+spec:
+  version: v0.1.0
+  init:
+    command: [/home/argocd/bin/init.sh]
+    args: []
+  generate:
+    command: [/home/argocd/bin/generate.sh]
+    args: []
+  discover:
+    fileName: "./bundle.cue"
+  parameters:
+    static:
+      - name: "valuesFile"
+        itemType: string
+      - name: "values"
+        collectionType: map

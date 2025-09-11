@@ -50,19 +50,10 @@ import (
 	registries: #registries
 }
 
-#config: {
-	shared: string | *null
-}
-
-#ci: {
-	provider: string
-}
-
 #defaults: {
 	prompt: bool
 }
 
 cue: #cue
-config: #config
 defaults: #defaults
 

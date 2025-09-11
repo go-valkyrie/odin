@@ -1,0 +1,39 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+      - name: Test
+        run: go test ./...
+  release-please:
+    if: github.event_name == 'push' && github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - id: release
+        uses: googleapis/release-please-action@v4
+      - id: publish-bundle
+        if: '${{ steps.release.outputs.release_created }}'
+        uses: actions/github-script@v6
+        with:
+          script: |-
+            let repo = context.repo;
+            await github.rest.actions.createWorkflowDispatch({
+                owner: repo.owner,
+                repo: repo.repo,
+                workflow_id: 'release.yml',
+                ref: '${{ steps.release.outputs.tag_name }}'
+            });

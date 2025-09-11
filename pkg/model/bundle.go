@@ -25,16 +25,17 @@
 package model
 
 import (
-	"cuelang.org/go/cue"
-	"cuelang.org/go/cue/build"
-	"cuelang.org/go/cue/cuecontext"
-	"cuelang.org/go/encoding/yaml"
 	"fmt"
-	"go-valkyrie.com/odin/internal/schema"
 	"io"
 	"iter"
 	"log/slog"
 	"os"
+
+	"cuelang.org/go/cue"
+	"cuelang.org/go/cue/build"
+	"cuelang.org/go/cue/cuecontext"
+	"cuelang.org/go/encoding/yaml"
+	"go-valkyrie.com/odin/internal/schema"
 )
 
 func configureValuesInstance(inst *build.Instance) error {
@@ -98,10 +99,15 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
-func WithValues(path string) Option {
+func WithValues(locations []string) Option {
 	return func(l *bundleLoader) error {
-		l.valuesSource = localSource(path)
-		return nil
+		if source, err := newValuesSource(locations); err != nil {
+			return err
+		} else {
+			l.valuesSource = source
+
+			return nil
+		}
 	}
 }
 
@@ -141,23 +147,14 @@ func (l *bundleLoader) Load() (*Bundle, error) {
 		b.value = value
 	}
 
-	//if logger.Enabled(nil, slog.LevelDebug) {
-	//	bundleInstance := b.value.BuildInstance()
-	//	bundleFiles := make([]string, 0, len(bundleInstance.BuildFiles))
-	//	for _, file := range bundleInstance.BuildFiles {
-	//		bundleFiles = append(bundleFiles, file.Filename)
-	//	}
-	//	logger.Debug("loaded bundle", "name", b.Name(), "files", bundleFiles)
-	//}
-
 	if bundleSchema, err := schema.LoadBundleSchema(b.ctx); err != nil {
 		return nil, err
 	} else {
 		b.value = b.value.Unify(bundleSchema)
 	}
 
-	logger.Debug("loading values", "source", l.valuesSource.String())
 	if l.valuesSource != nil {
+		logger.Debug("loading values", "source", l.valuesSource.String())
 		if _b, err := b.LoadValues(l.valuesSource); err != nil {
 			return nil, err
 		} else {

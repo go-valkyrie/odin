@@ -29,6 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	"go-valkyrie.com/odin/internal/utils"
 	"os"
+	"path/filepath"
 )
 import cuecmd "cuelang.org/go/cmd/cue/cmd"
 
@@ -43,12 +44,14 @@ func cuePreRunE(cmd *cobra.Command, args []string) error {
 		if err := os.Setenv("CUE_REGISTRY", registryConfig); err != nil {
 			return err
 		}
+		fmt.Printf("cue registry config: %s\n", registryConfig)
 	}
 
 	if sharedOpts.CacheDir != "" {
-		if err := os.Setenv("CUE_CACHE", sharedOpts.CacheDir); err != nil {
+		if err := os.Setenv("CUE_CACHE_DIR", filepath.Join(sharedOpts.CacheDir, "cue")); err != nil {
 			return err
 		}
+		fmt.Printf("cue cache directory: %s\n", sharedOpts.CacheDir)
 	} else {
 		return fmt.Errorf("cache directory must be set")
 	}

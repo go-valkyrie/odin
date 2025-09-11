@@ -32,8 +32,9 @@ func loadSource(path string) (source.Source, error) {
 	if path == "" {
 		// Use UserConfigSource for global config
 		return source.UserConfig(&source.UserConfigOptions{
-			Vendor: "Valkyrie",
-			App:    "odin",
+			Vendor:   "Valkyrie",
+			App:      "odin",
+			Filename: "config.cue",
 			Template: map[string][]byte{
 				"config.cue": userConfigTemplate,
 			},

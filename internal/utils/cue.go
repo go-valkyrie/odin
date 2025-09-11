@@ -22,54 +22,32 @@
  * SOFTWARE.
  */
 
-package model
+package utils
 
 import (
-	"fmt"
+	"cuelang.org/go/pkg/strings"
 	"os"
-
-	"cuelang.org/go/cue"
-	"cuelang.org/go/cue/build"
-	"cuelang.org/go/cue/load"
 )
 
-type instanceConfiguration func(inst *build.Instance) error
-
-type sourceLoadOptions struct {
-	Env                   []string
-	InstanceConfiguration instanceConfiguration
-}
-
-type modelSource interface {
-	Load(ctx *cue.Context, opts *sourceLoadOptions) (cue.Value, error)
-	fmt.Stringer
-}
-
-func newSource(location string) (modelSource, error) {
-	return localSource(location), nil
-}
-
-type localSource string
-
-func (s localSource) String() string {
-	return string(s)
-}
-
-func (s localSource) Load(ctx *cue.Context, opts *sourceLoadOptions) (cue.Value, error) {
-	if _, err := os.Stat(string(s)); err != nil {
-		return cue.Value{}, err
+func FormatRegistryConfig(registries map[string]string) string {
+	r := make([]string, 0, len(registries))
+	for path, registry := range registries {
+		r = append(r, path+"="+registry)
 	}
 
-	inst := load.Instances([]string{string(s)}, &load.Config{
-		DataFiles: true,
-		Env:       opts.Env,
-	})[0]
+	return strings.Join(r, ",")
+}
 
-	if configure := opts.InstanceConfiguration; configure != nil {
-		if err := configure(inst); err != nil {
-			return cue.Value{}, err
-		}
+func CreateCueEnvironment(cacheDir string, registries map[string]string) []string {
+	env := make([]string, 0, 4)
+	if v, ok := os.LookupEnv("HOME"); ok {
+		env = append(env, "HOME="+v)
 	}
+	if v, ok := os.LookupEnv("USERPROFILE"); ok {
+		env = append(env, "USERPROFILE="+v)
+	}
+	env = append(env, "CUE_CACHE_DIR="+cacheDir)
+	env = append(env, "CUE_REGISTRY_CONFIG="+FormatRegistryConfig(registries))
 
-	return ctx.BuildInstance(inst), nil
+	return env
 }

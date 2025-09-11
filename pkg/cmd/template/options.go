@@ -30,16 +30,19 @@ import (
 )
 
 type Options struct {
-	BundlePath string
-	CacheDir   string
-	Logger     *slog.Logger
-	Registries map[string]string
-	ValuesPath string
+	BundlePath      string
+	CacheDir        string
+	Logger          *slog.Logger
+	Registries      map[string]string
+	ValuesLocations []string
+	ValuesPath      string
+	ValuesFormat    string
 }
 
-func NewOptions() *Options {
+func DefaultOptions() *Options {
 	return &Options{
-		Registries: make(map[string]string),
-		Logger:     slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{})),
+		Registries:      make(map[string]string),
+		Logger:          slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{})),
+		ValuesLocations: []string{},
 	}
 }

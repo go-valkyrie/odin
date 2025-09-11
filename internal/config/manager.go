@@ -90,8 +90,8 @@ func (m *manager) Evaluated() ([]byte, error) {
 	}
 
 	// Get the raw CUE value and format it
-	value := m.config.Raw().Eval()
-	syntax := value.Syntax(cue.Final())
+	value := m.config.Raw()
+	syntax := value.Syntax(cue.Final(), cue.Docs(true))
 	return cuefmt.Node(syntax, cuefmt.Simplify())
 }
 

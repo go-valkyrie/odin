@@ -26,16 +26,17 @@ package template
 
 import (
 	"context"
-	"cuelang.org/go/cue"
-	"cuelang.org/go/pkg/strings"
 	"fmt"
-	"go-valkyrie.com/odin/internal/utils"
-	"go-valkyrie.com/odin/pkg/model"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
+
+	"cuelang.org/go/cue"
+	"cuelang.org/go/pkg/strings"
+	"go-valkyrie.com/odin/internal/utils"
+	"go-valkyrie.com/odin/pkg/model"
 )
 
 var (
@@ -73,8 +74,8 @@ func run(ctx context.Context, opts Options) error {
 		model.WithEnv(env),
 		model.WithLogger(logger),
 	}
-	if opts.ValuesPath != "" {
-		modelOpts = append(modelOpts, model.WithValues(opts.ValuesPath))
+	if len(opts.ValuesLocations) > 0 {
+		modelOpts = append(modelOpts, model.WithValues(opts.ValuesLocations))
 	}
 
 	b, err := model.LoadBundle(opts.BundlePath, modelOpts...)

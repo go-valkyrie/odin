@@ -22,54 +22,12 @@
  * SOFTWARE.
  */
 
-package model
+package utils
 
-import (
-	"fmt"
-	"os"
-
-	"cuelang.org/go/cue"
-	"cuelang.org/go/cue/build"
-	"cuelang.org/go/cue/load"
-)
-
-type instanceConfiguration func(inst *build.Instance) error
-
-type sourceLoadOptions struct {
-	Env                   []string
-	InstanceConfiguration instanceConfiguration
-}
-
-type modelSource interface {
-	Load(ctx *cue.Context, opts *sourceLoadOptions) (cue.Value, error)
-	fmt.Stringer
-}
-
-func newSource(location string) (modelSource, error) {
-	return localSource(location), nil
-}
-
-type localSource string
-
-func (s localSource) String() string {
-	return string(s)
-}
-
-func (s localSource) Load(ctx *cue.Context, opts *sourceLoadOptions) (cue.Value, error) {
-	if _, err := os.Stat(string(s)); err != nil {
-		return cue.Value{}, err
+func Must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
 	}
 
-	inst := load.Instances([]string{string(s)}, &load.Config{
-		DataFiles: true,
-		Env:       opts.Env,
-	})[0]
-
-	if configure := opts.InstanceConfiguration; configure != nil {
-		if err := configure(inst); err != nil {
-			return cue.Value{}, err
-		}
-	}
-
-	return ctx.BuildInstance(inst), nil
+	return v
 }

@@ -26,18 +26,19 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
+
 	"github.com/spf13/cobra"
 	"go-valkyrie.com/odin/internal/config"
 	"go-valkyrie.com/odin/pkg/cmd/template"
-	"log/slog"
 )
 
 type templateCmd struct {
-	logger     *slog.Logger
-	config     config.Manager
-	cacheDir   string
-	bundlePath string
-	valuesPath string
+	logger      *slog.Logger
+	config      config.Manager
+	cacheDir    string
+	bundlePath  string
+	valuesFiles []string
 }
 
 func (c *templateCmd) Args(cmd *cobra.Command, args []string) error {
@@ -67,10 +68,10 @@ func (c *templateCmd) PreRunE(cmd *cobra.Command, args []string) error {
 
 func (c *templateCmd) RunE(cmd *cobra.Command, args []string) error {
 	opts := template.Options{
-		BundlePath: c.bundlePath,
-		CacheDir:   c.cacheDir,
-		Logger:     c.logger.With("component", "template"),
-		ValuesPath: c.valuesPath,
+		BundlePath:      c.bundlePath,
+		CacheDir:        c.cacheDir,
+		Logger:          c.logger.With("component", "template"),
+		ValuesLocations: c.valuesFiles,
 	}
 	if registries, err := c.config.ModuleRegistries(); err != nil {
 		return err
@@ -89,6 +90,7 @@ func newTemplateCmd() *cobra.Command {
 		PreRunE: c.PreRunE,
 		RunE:    c.RunE,
 	}
-	cmd.Flags().StringVarP(&c.valuesPath, "values", "f", "", "Path to values file")
+	cmd.Flags().StringArrayVarP(&c.valuesFiles, "values", "f", []string{}, "Values files")
+
 	return cmd
 }

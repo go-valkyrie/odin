@@ -80,6 +80,6 @@ func newInitCmd() *cobra.Command {
 		RunE:    c.RunE,
 	}
 	cmd.Flags().BoolVarP(&c.opts.Prompt, "prompt", "p", true, "use interactive prompts to configure values")
-
+	cmd.Flags().StringVarP(&c.opts.ModulePath, "module", "m", "", "specify name of generated cue module (infers from git remote by default)")
 	return cmd
 }

@@ -151,6 +151,11 @@ func run(ctx context.Context, o *Options) error {
 	if bundleName == "" {
 		if nameFromGit, err := bundleNameFromGit(o.BundlePath); err == nil {
 			bundleName = nameFromGit
+		} else if bundlePath != "." {
+			logger.Debug("generating bundle name from path", "path", bundlePath)
+			_, target := filepath.Split(bundlePath)
+			logger.Debug("using bundle name", "name", target)
+			bundleName = target
 		} else {
 			return fmt.Errorf("bundle name not specified and unable to determine from git repository: %w", err)
 		}
@@ -186,17 +191,17 @@ func run(ctx context.Context, o *Options) error {
 	failedInit := true
 	defer func() {
 		if failedInit {
-			entries, err := filepath.Glob(filepath.Join(bundlePath, "*"))
-			if err != nil {
-
-			}
-			for _, entry := range entries {
-				os.RemoveAll(entry)
-			}
+			//entries, err := filepath.Glob(filepath.Join(bundlePath, "*"))
+			//if err != nil {
+			//
+			//}
+			//for _, entry := range entries {
+			//	os.RemoveAll(entry)
+			//}
 		}
 	}()
 
-	if data, err := cueModFile.Format(); err != nil {
+	if data, err := modfile.Format(&cueModFile); err != nil {
 		return err
 	} else if err := os.WriteFile(cueModulePath, data, 0644); err != nil {
 		return err
