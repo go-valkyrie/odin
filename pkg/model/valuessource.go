@@ -31,8 +31,8 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/load"
-	"go-valkyrie.com/odin/pkg/utils"
-	"go-valkyrie.com/odin/pkg/utils/regexpext"
+	"go-valkyrie.com/odin/internal/utils"
+	"go-valkyrie.com/odin/internal/utils/regexpext"
 )
 
 var _valuesFilePattern = utils.Must(regexpext.NewMatcher(`^((?P<Format>[\w]*): )?(?P<Path>.*$)`))
