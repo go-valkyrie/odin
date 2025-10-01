@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/go-valkyrie/odin/compare/v0.1.1...v0.2.0) (2025-10-01)
+
+
+### Features
+
+* create separate cue caches for different registry configs ([4470b81](https://github.com/go-valkyrie/odin/commit/4470b81be1ac76f563bb349d34123e4fbb2ba34f))
+
 ## [0.1.1](https://github.com/go-valkyrie/odin/compare/v0.1.0...v0.1.1) (2025-09-11)
 
 
