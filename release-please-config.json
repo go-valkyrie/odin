@@ -1,9 +1,22 @@
 {
   "packages": {
+    "api": {
+      "component": "api",
+      "changelog-path": "api/CHANGELOG.md",
+      "release-type": "simple",
+      "initial-version": "0.1.0",
+      "include-component-in-tag": true,
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": false,
+      "draft": false,
+      "prerelease": false
+    },
     ".": {
+      "component": "odin",
       "changelog-path": "CHANGELOG.md",
       "release-type": "go",
-      "bump-minor-pre-major": false,
+      "include-component-in-tag": false,
+      "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": false,
       "draft": false,
       "prerelease": false
