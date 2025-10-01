@@ -29,8 +29,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"slices"
 
 	"cuelang.org/go/cue"
@@ -56,19 +54,9 @@ func run(ctx context.Context, opts Options) error {
 		logger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
 	}
 
-	env := make([]string, 0, 2)
+	env := utils.CreateCueEnvironment(opts.CacheDir, opts.Registries)
 
-	if opts.CacheDir != "" {
-		env = append(env, fmt.Sprintf("CUE_CACHE_DIR=%s", filepath.Join(opts.CacheDir, "cue")))
-	}
-
-	env = append(env, fmt.Sprintf("CUE_REGISTRY=%s", utils.FormatRegistryConfig(opts.Registries)))
-
-	for _, k := range preserveEnvVars {
-		if v, ok := os.LookupEnv(k); ok {
-			env = append(env, fmt.Sprintf("%s=%s", k, v))
-		}
-	}
+	logger.Debug("using cue environment", "env", env)
 
 	modelOpts := []model.Option{
 		model.WithEnv(env),

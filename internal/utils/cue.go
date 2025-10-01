@@ -25,8 +25,14 @@
 package utils
 
 import (
-	"cuelang.org/go/pkg/strings"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"os"
+	"path/filepath"
+	"slices"
+
+	"cuelang.org/go/pkg/strings"
 )
 
 func FormatRegistryConfig(registries map[string]string) string {
@@ -35,10 +41,13 @@ func FormatRegistryConfig(registries map[string]string) string {
 		r = append(r, path+"="+registry)
 	}
 
+	slices.Sort(r)
+
 	return strings.Join(r, ",")
 }
 
 func CreateCueEnvironment(cacheDir string, registries map[string]string) []string {
+	registryConfig := FormatRegistryConfig(registries)
 	env := make([]string, 0, 4)
 	if v, ok := os.LookupEnv("HOME"); ok {
 		env = append(env, "HOME="+v)
@@ -46,8 +55,13 @@ func CreateCueEnvironment(cacheDir string, registries map[string]string) []strin
 	if v, ok := os.LookupEnv("USERPROFILE"); ok {
 		env = append(env, "USERPROFILE="+v)
 	}
-	env = append(env, "CUE_CACHE_DIR="+cacheDir)
-	env = append(env, "CUE_REGISTRY_CONFIG="+FormatRegistryConfig(registries))
+
+	registrySum := sha256.Sum256([]byte(registryConfig))
+	cachePrefix := hex.EncodeToString(registrySum[:])
+	env = append(env, fmt.Sprintf("CUE_CACHE_DIR=%s",
+		filepath.Join(cacheDir, cachePrefix)))
+
+	env = append(env, fmt.Sprintf("CUE_REGISTRY=%s", registryConfig))
 
 	return env
 }
