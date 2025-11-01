@@ -73,11 +73,13 @@ func (c *templateCmd) RunE(cmd *cobra.Command, args []string) error {
 		Logger:          c.logger.With("component", "template"),
 		ValuesLocations: c.valuesFiles,
 	}
-	if registries, err := c.config.ModuleRegistries(); err != nil {
+	// Load global registries first
+	globalRegistries, err := c.config.ModuleRegistries()
+	if err != nil {
 		return err
-	} else {
-		opts.Registries = registries
 	}
+	// Pass global registries; bundle-local registries will be merged inside the model loader.
+	opts.Registries = globalRegistries
 	return opts.Run(cmd.Context())
 }
 

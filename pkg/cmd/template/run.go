@@ -33,7 +33,6 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/pkg/strings"
-	"go-valkyrie.com/odin/internal/utils"
 	"go-valkyrie.com/odin/pkg/model"
 )
 
@@ -54,14 +53,12 @@ func run(ctx context.Context, opts Options) error {
 		logger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
 	}
 
-	env := utils.CreateCueEnvironment(opts.CacheDir, opts.Registries)
-
-	logger.Debug("using cue environment", "env", env)
-
 	modelOpts := []model.Option{
-		model.WithEnv(env),
 		model.WithLogger(logger),
+		model.WithRegistries(opts.Registries),
+		model.WithCacheDir(opts.CacheDir),
 	}
+
 	if len(opts.ValuesLocations) > 0 {
 		modelOpts = append(modelOpts, model.WithValues(opts.ValuesLocations))
 	}

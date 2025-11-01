@@ -29,6 +29,7 @@ import (
 	"io"
 	"iter"
 	"log/slog"
+	"maps"
 	"os"
 
 	"cuelang.org/go/cue"
@@ -36,6 +37,7 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/encoding/yaml"
 	"go-valkyrie.com/odin/internal/schema"
+	"go-valkyrie.com/odin/internal/utils"
 )
 
 func configureValuesInstance(inst *build.Instance) error {
@@ -76,6 +78,8 @@ type bundleLoader struct {
 	logger       *slog.Logger
 	source       modelSource
 	valuesSource modelSource
+	registries   map[string]string
+	cacheDir     string
 }
 
 func WithContext(ctx *cue.Context) Option {
@@ -88,6 +92,22 @@ func WithContext(ctx *cue.Context) Option {
 func WithEnv(env []string) Option {
 	return func(l *bundleLoader) error {
 		l.env = env
+		return nil
+	}
+}
+
+// WithRegistries provides a default set of CUE registries, these may be overridden by the bundle config.
+func WithRegistries(reg map[string]string) Option {
+	return func(l *bundleLoader) error {
+		l.registries = reg
+		return nil
+	}
+}
+
+// WithCacheDir provides the cache directory so the loader can build the CUE env.
+func WithCacheDir(cacheDir string) Option {
+	return func(l *bundleLoader) error {
+		l.cacheDir = cacheDir
 		return nil
 	}
 }
@@ -111,31 +131,37 @@ func WithValues(locations []string) Option {
 	}
 }
 
-func dumpCue(value cue.Value) {
-	fmt.Printf("%v\n", value)
-}
-
 func (l *bundleLoader) Load() (*Bundle, error) {
 	if l.source == nil {
 		return nil, fmt.Errorf("modelSource is required")
 	}
+
 	logger := l.logger
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
 	}
 
-	b := &Bundle{
-		ctx: l.ctx,
-		env: l.env,
+	if l.registries == nil {
+		l.registries = map[string]string{}
 	}
 
-	if b.ctx == nil {
-		b.ctx = cuecontext.New()
+	b, err := newBundle(l.ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	if b.env == nil {
-		b.env = os.Environ()
+	bundlePath := l.source.String()
+	cfg, err := loadConfig(bundlePath)
+	if err != nil {
+		return nil, err
 	}
+
+	b.addRegistries(l.registries)
+	b.addRegistries(cfg.Registries)
+
+	b.env = utils.CreateCueEnvironment(l.cacheDir, b.Registries())
+
+	logger.Debug("using CUE environment", "env", b.env)
 
 	logger.Debug("loading bundle", "source", l.source.String())
 
@@ -184,9 +210,24 @@ func LoadBundle(bundlePath string, options ...Option) (*Bundle, error) {
 }
 
 type Bundle struct {
-	ctx   *cue.Context
-	env   []string
-	value cue.Value
+	ctx        *cue.Context
+	env        []string
+	value      cue.Value
+	registries map[string]string
+}
+
+func newBundle(cuectx *cue.Context) (*Bundle, error) {
+	if cuectx == nil {
+		cuectx = cuecontext.New()
+	}
+
+	b := &Bundle{
+		ctx:        cuectx,
+		env:        make([]string, 0, 4),
+		registries: make(map[string]string),
+	}
+
+	return b, nil
 }
 
 func (b *Bundle) GoString() string {
@@ -205,8 +246,10 @@ func (b *Bundle) LoadValues(source modelSource) (*Bundle, error) {
 	value := b.value.FillPath(cue.ParsePath("values"), values)
 
 	newBundle := &Bundle{
-		ctx:   b.ctx,
-		value: value,
+		ctx:        b.ctx,
+		env:        b.env,
+		value:      value,
+		registries: b.registries,
 	}
 	return newBundle, nil
 }
@@ -239,4 +282,14 @@ func (b *Bundle) Name() string {
 
 func (b *Bundle) Value() cue.Value {
 	return b.value
+}
+
+func (b *Bundle) addRegistries(registries map[string]string) {
+	if b.registries != nil {
+		maps.Copy(b.registries, registries)
+	}
+}
+
+func (b *Bundle) Registries() map[string]string {
+	return b.registries
 }
