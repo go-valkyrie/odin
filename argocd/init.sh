@@ -14,7 +14,7 @@ fi
 
 stat "$values_file" > /dev/null
 
-odin template -t json -f "$values_file"
+odin template -f "$values_file"
 
 if $cleanup_values; then
   rm $values_file
