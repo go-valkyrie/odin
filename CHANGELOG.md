@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0](https://github.com/go-valkyrie/odin/compare/v0.2.3...v0.3.0) (2025-11-01)
+
+
+### Features
+
+* allow bundles to specify local registries ([c0a006d](https://github.com/go-valkyrie/odin/commit/c0a006dc9b776f3b65d75ba8b5e9816b8d86642b))
+* create separate cue caches for different registry configs ([4470b81](https://github.com/go-valkyrie/odin/commit/4470b81be1ac76f563bb349d34123e4fbb2ba34f))
+
+
+### Bug Fixes
+
+* add odin.toml example ([ac2ef5b](https://github.com/go-valkyrie/odin/commit/ac2ef5bb52f6bcb3cc0ad3703941171f4df064bc))
+* correct invalid command in argocd plugin scripts ([14ce1fc](https://github.com/go-valkyrie/odin/commit/14ce1fcf2ec9d653e5e0ed489ab4f09bed07965e))
+* correct release config ([572c8ac](https://github.com/go-valkyrie/odin/commit/572c8ac925d9aec2ba46b3beb26749f5ffc68a70))
+* correct release workflow ([69cdeed](https://github.com/go-valkyrie/odin/commit/69cdeed18c59fd061b28a7004fc12d4741922cb1))
+* correct release-please-config ([09b86f5](https://github.com/go-valkyrie/odin/commit/09b86f5cef35a1b2fed90238e6eb3a6bd7310c95))
+* lots of cleanup and misc. work ([a790058](https://github.com/go-valkyrie/odin/commit/a79005859e4e51930dadc3f78425fc7b8c787c21))
+
 ## [0.2.3](https://github.com/go-valkyrie/odin/compare/v0.2.2...v0.2.3) (2025-11-01)
 
 
