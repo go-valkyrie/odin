@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/go-valkyrie/odin/compare/v0.2.0...v0.2.1) (2025-11-01)
+
+
+### Bug Fixes
+
+* add odin.toml example ([ac2ef5b](https://github.com/go-valkyrie/odin/commit/ac2ef5bb52f6bcb3cc0ad3703941171f4df064bc))
+* correct release config ([572c8ac](https://github.com/go-valkyrie/odin/commit/572c8ac925d9aec2ba46b3beb26749f5ffc68a70))
+
 ## [0.2.0](https://github.com/go-valkyrie/odin/compare/v0.1.1...v0.2.0) (2025-11-01)
 
 
