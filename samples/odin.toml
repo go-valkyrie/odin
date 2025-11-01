@@ -1,0 +1,3 @@
+[[registries]]
+module-prefix = "platform.mycorp.com"
+registry = "ghcr.io/mycorp/platform"
