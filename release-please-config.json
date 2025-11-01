@@ -1,7 +1,6 @@
 {
   "packages": {
     ".": {
-      "component": "odin",
       "changelog-path": "CHANGELOG.md",
       "release-type": "go",
       "include-component-in-tag": false,
