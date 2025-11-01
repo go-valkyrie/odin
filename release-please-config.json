@@ -1,7 +1,16 @@
 {
   "packages": {
+    "api": {
+      "changelog-path": "api/CHANGELOG.md",
+      "release-type": "simple",
+      "initial-version": "0.1.0",
+      "include-component-in-tag": true,
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": false,
+      "draft": false,
+      "prerelease": false
+    },
     ".": {
-      "component": "odin",
       "changelog-path": "CHANGELOG.md",
       "release-type": "go",
       "include-component-in-tag": false,
@@ -11,5 +20,6 @@
       "prerelease": false
     }
   },
+  "bootstrap-sha": "9c32241dbde473be18dc54739a0a6a6f29994fb7",
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"
 }
