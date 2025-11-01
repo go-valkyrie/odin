@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/go-valkyrie/odin/compare/v0.2.1...v0.2.2) (2025-11-01)
+
+
+### Bug Fixes
+
+* correct release workflow ([69cdeed](https://github.com/go-valkyrie/odin/commit/69cdeed18c59fd061b28a7004fc12d4741922cb1))
+
 ## [0.2.1](https://github.com/go-valkyrie/odin/compare/v0.2.0...v0.2.1) (2025-11-01)
 
 
