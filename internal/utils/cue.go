@@ -49,19 +49,23 @@ func FormatRegistryConfig(registries map[string]string) string {
 func CreateCueEnvironment(cacheDir string, registries map[string]string) []string {
 	registryConfig := FormatRegistryConfig(registries)
 	env := make([]string, 0, 4)
+
 	if v, ok := os.LookupEnv("HOME"); ok {
 		env = append(env, "HOME="+v)
 	}
+
 	if v, ok := os.LookupEnv("USERPROFILE"); ok {
 		env = append(env, "USERPROFILE="+v)
 	}
 
-	registrySum := sha256.Sum256([]byte(registryConfig))
-	cachePrefix := hex.EncodeToString(registrySum[:])
-	env = append(env, fmt.Sprintf("CUE_CACHE_DIR=%s",
-		filepath.Join(cacheDir, cachePrefix)))
+	if cacheDir != "" {
+		registrySum := sha256.Sum256([]byte(registryConfig))
+		cachePrefix := hex.EncodeToString(registrySum[:])
+		env = append(env, fmt.Sprintf("CUE_CACHE_DIR=%s",
+			filepath.Join(cacheDir, cachePrefix)))
 
-	env = append(env, fmt.Sprintf("CUE_REGISTRY=%s", registryConfig))
+		env = append(env, fmt.Sprintf("CUE_REGISTRY=%s", registryConfig))
+	}
 
 	return env
 }
