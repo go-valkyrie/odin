@@ -1,7 +1,6 @@
 {
   "packages": {
     "api": {
-      "component": "api",
       "changelog-path": "api/CHANGELOG.md",
       "release-type": "simple",
       "initial-version": "0.1.0",
@@ -12,7 +11,7 @@
       "prerelease": false
     },
     ".": {
-      "component": "odin",
+
       "changelog-path": "CHANGELOG.md",
       "release-type": "go",
       "include-component-in-tag": false,
