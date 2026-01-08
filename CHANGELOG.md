@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/go-valkyrie/odin/compare/v0.2.5...v0.3.0) (2026-01-08)
+
+
+### Features
+
+* add support for hooks to argocd plugin ([885d031](https://github.com/go-valkyrie/odin/commit/885d0317b90f77ff960cb4336628e57b82ecb4f4))
+* set HOME in argocd scripts ([0856e50](https://github.com/go-valkyrie/odin/commit/0856e504ff6c49dd5cd13713de5e4d9e2a60c3f7))
+
+
+### Bug Fixes
+
+* correct hostname validation in config schema ([3a5d4a2](https://github.com/go-valkyrie/odin/commit/3a5d4a22dacd4ef3d02ffac8e80cba723957a829))
+
 ## [0.2.5](https://github.com/go-valkyrie/odin/compare/v0.2.4...v0.2.5) (2025-11-01)
 
 
