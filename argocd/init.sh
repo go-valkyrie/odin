@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 set -o pipefail
+export HOME=/home/argocd
+
 cleanup_values=false
 values_file=$(echo "$ARGOCD_APP_PARAMETERS" |  jq -r '.[] | select(.name=="valuesFile") | .string')
 if [[ "$values_file" = "" ]]; then
