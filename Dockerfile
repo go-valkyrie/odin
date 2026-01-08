@@ -11,11 +11,13 @@ COPY --exclude=argocd/* --exclude=Dockerfile --exclude=argocd/* --exclude=go.mod
 RUN GOARCH=${TARGETARCH} go build ./cmd/odin
 
 FROM --platform=$TARGETPLATFORM rockylinux/rockylinux:9
-RUN useradd -U -m odin &&  useradd -U -r -m -u 999 argocd
 RUN dnf install -y jq
-COPY --from=build --chown=root:root /usr/src/app/odin /usr/local/bin/odin
-COPY argocd/*.sh /home/argocd/bin/
+RUN useradd -U -m odin && \
+    useradd -U -r -m -u 999 argocd && \
+    mkdir -p /etc/odin/argocd/{init,generate}.d
 COPY argocd/plugin.yml /home/argocd/cmp-server/config/plugin.yaml
+COPY argocd/*.sh /home/argocd/bin/
+COPY --from=build --chown=root:root /usr/src/app/odin /usr/local/bin/odin
 
 RUN chown -R argocd:argocd /home/argocd/cmp-server
 USER odin
