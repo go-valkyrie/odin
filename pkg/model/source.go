@@ -60,7 +60,8 @@ func (s localSource) Load(ctx *cue.Context, opts *sourceLoadOptions) (cue.Value,
 		return cue.Value{}, err
 	}
 
-	inst := load.Instances([]string{string(s)}, &load.Config{
+	inst := load.Instances([]string{"."}, &load.Config{
+		Dir:       string(s),
 		DataFiles: true,
 		Env:       opts.Env,
 	})[0]

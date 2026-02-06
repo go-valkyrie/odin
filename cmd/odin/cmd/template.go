@@ -63,6 +63,15 @@ func (c *templateCmd) PreRunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Auto-discover bundle root if using default path
+	if c.bundlePath == "." {
+		root, err := findBundleRoot(".")
+		if err != nil {
+			return err
+		}
+		c.bundlePath = root
+	}
+
 	return nil
 }
 
