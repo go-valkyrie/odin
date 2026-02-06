@@ -1,0 +1,10 @@
+[book]
+title = "Odin Guide"
+authors = ["Stefan Nuxoll"]
+language = "en"
+src = "src"
+
+[output]
+[output.html]
+git-repository-url = "https://github.com/go-valkyrie/odin"
+edit-url-template = "https://github.com/go-valkyrie/odin/edit/main/docs/{path}"
