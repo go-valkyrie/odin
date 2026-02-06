@@ -153,7 +153,7 @@ func (l *bundleLoader) Load() (*Bundle, error) {
 	bundlePath := l.source.String()
 	b.sourcePath = bundlePath
 	b.logger = logger
-	cfg, err := loadConfig(bundlePath)
+	cfg, err := LoadConfig(bundlePath)
 	if err != nil {
 		return nil, err
 	}

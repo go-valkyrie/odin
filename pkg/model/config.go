@@ -32,7 +32,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-type config struct {
+type Config struct {
 	Registries map[string]string
 }
 
@@ -45,12 +45,12 @@ type tomlRoot struct {
 	Registries []registryEntry `toml:"registries"`
 }
 
-// loadConfig reads odin.toml (preferred) or legacy odin.registries.toml from bundlePath.
-func loadConfig(bundlePath string) (*config, error) {
+// LoadConfig reads odin.toml (preferred) or legacy odin.registries.toml from bundlePath.
+func LoadConfig(bundlePath string) (*Config, error) {
 	if bundlePath == "" {
 		bundlePath = "."
 	}
-	cfg := &config{Registries: map[string]string{}}
+	cfg := &Config{Registries: map[string]string{}}
 
 	odinToml := filepath.Join(bundlePath, "odin.toml")
 	if st, err := os.Stat(odinToml); err == nil && !st.IsDir() {
@@ -63,7 +63,7 @@ func loadConfig(bundlePath string) (*config, error) {
 	return cfg, nil
 }
 
-func decodeTomlRegistries(path string, cfg *config) error {
+func decodeTomlRegistries(path string, cfg *Config) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err

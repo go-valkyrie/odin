@@ -25,35 +25,42 @@
 package cmd
 
 import (
-	"fmt"
+	"maps"
+	"os"
+	"strings"
+
+	cuecmd "cuelang.org/go/cmd/cue/cmd"
 	"github.com/spf13/cobra"
 	"go-valkyrie.com/odin/internal/utils"
-	"os"
-	"path/filepath"
+	"go-valkyrie.com/odin/pkg/model"
 )
-import cuecmd "cuelang.org/go/cmd/cue/cmd"
 
 func cuePreRunE(cmd *cobra.Command, args []string) error {
-	config := configFromCommand(cmd)
+	cfg := configFromCommand(cmd)
 	sharedOpts := sharedOptsFromCommand(cmd)
+	logger := loggerFromCommand(cmd)
 
-	if registries, err := config.ModuleRegistries(); err != nil {
+	registries, err := cfg.ModuleRegistries()
+	if err != nil {
 		return err
-	} else {
-		registryConfig := utils.FormatRegistryConfig(registries)
-		if err := os.Setenv("CUE_REGISTRY", registryConfig); err != nil {
-			return err
-		}
-		fmt.Printf("cue registry config: %s\n", registryConfig)
 	}
 
-	if sharedOpts.CacheDir != "" {
-		if err := os.Setenv("CUE_CACHE_DIR", filepath.Join(sharedOpts.CacheDir, "cue")); err != nil {
+	bundleCfg, err := model.LoadConfig(".")
+	if err != nil {
+		return err
+	}
+	maps.Copy(registries, bundleCfg.Registries)
+
+	logger.Debug("merged registries", "registries", registries)
+
+	env := utils.CreateCueEnvironment(sharedOpts.CacheDir, registries)
+	logger.Debug("using CUE environment", "env", env)
+
+	for _, e := range env {
+		k, v, _ := strings.Cut(e, "=")
+		if err := os.Setenv(k, v); err != nil {
 			return err
 		}
-		fmt.Printf("cue cache directory: %s\n", sharedOpts.CacheDir)
-	} else {
-		return fmt.Errorf("cache directory must be set")
 	}
 
 	return nil
