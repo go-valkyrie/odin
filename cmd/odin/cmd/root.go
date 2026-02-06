@@ -131,6 +131,9 @@ func newRootCmd(logger *slog.Logger) *cobra.Command {
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newDocsCmd())
 	cmd.AddCommand(newInitCmd())
+	cmd.AddCommand(newPullCmd())
+	cmd.AddCommand(newPushCmd())
+	cmd.AddCommand(newShowCmd())
 	cmd.AddCommand(newTemplateCmd())
 
 	return cmd

@@ -38,6 +38,7 @@ import (
 	"cuelang.org/go/encoding/yaml"
 	"go-valkyrie.com/odin/internal/schema"
 	"go-valkyrie.com/odin/internal/utils"
+	pkgschema "go-valkyrie.com/odin/pkg/schema"
 )
 
 func configureValuesInstance(inst *build.Instance) error {
@@ -145,6 +146,16 @@ func (l *bundleLoader) Load() (*Bundle, error) {
 		l.registries = map[string]string{}
 	}
 
+	// Check if source needs preparation (e.g., OCI sources need to pull first)
+	type preparableSource interface {
+		Prepare() error
+	}
+	if p, ok := l.source.(preparableSource); ok {
+		if err := p.Prepare(); err != nil {
+			return nil, fmt.Errorf("failed to prepare source: %w", err)
+		}
+	}
+
 	b, err := newBundle(l.ctx)
 	if err != nil {
 		return nil, err
@@ -196,16 +207,18 @@ func (l *bundleLoader) Load() (*Bundle, error) {
 func LoadBundle(bundlePath string, options ...Option) (*Bundle, error) {
 	l := &bundleLoader{}
 
-	if source, err := newSource(bundlePath); err != nil {
-		return nil, err
-	} else {
-		l.source = source
-	}
-
+	// Apply options first so we have logger if needed
 	for _, option := range options {
 		if err := option(l); err != nil {
 			return nil, err
 		}
+	}
+
+	// Create source with logger
+	if source, err := newSource(bundlePath, l.logger); err != nil {
+		return nil, err
+	} else {
+		l.source = source
 	}
 
 	return l.Load()
@@ -298,4 +311,36 @@ func (b *Bundle) addRegistries(registries map[string]string) {
 
 func (b *Bundle) Registries() map[string]string {
 	return b.registries
+}
+
+// ValuesSchema returns the schema fields for the bundle's values section,
+// with validation pattern constraints filtered out.
+func (b *Bundle) ValuesSchema() []*pkgschema.SchemaField {
+	valuesValue := b.value.LookupPath(cue.ParsePath("values"))
+	if !valuesValue.Exists() || valuesValue.Err() != nil {
+		return nil
+	}
+	fields := pkgschema.WalkSchema(valuesValue)
+	filterValuesSchemaPatterns(fields)
+	return fields
+}
+
+// filterValuesSchemaPatterns removes the [string]: {...} pattern constraint
+// from the components field in bundle values. This pattern is just validation
+// scaffolding in the bundle schema and not meaningful documentation for users.
+func filterValuesSchemaPatterns(fields []*pkgschema.SchemaField) {
+	for _, field := range fields {
+		if field.Name == "components" && len(field.Children) > 0 {
+			// Filter out empty pattern constraints from components
+			filtered := make([]*pkgschema.SchemaField, 0, len(field.Children))
+			for _, child := range field.Children {
+				// Skip [string]: {...} pattern with no actual fields
+				if child.IsPattern && len(child.Children) == 0 && child.Type == "{...}" {
+					continue
+				}
+				filtered = append(filtered, child)
+			}
+			field.Children = filtered
+		}
+	}
 }

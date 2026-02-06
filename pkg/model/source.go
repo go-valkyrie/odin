@@ -26,7 +26,9 @@ package model
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
+	"strings"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/build"
@@ -45,7 +47,13 @@ type modelSource interface {
 	fmt.Stringer
 }
 
-func newSource(location string) (modelSource, error) {
+func newSource(location string, logger *slog.Logger) (modelSource, error) {
+	if strings.HasPrefix(location, "oci://") {
+		if logger == nil {
+			logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
+		}
+		return newOCISource(location, logger)
+	}
 	return localSource(location), nil
 }
 

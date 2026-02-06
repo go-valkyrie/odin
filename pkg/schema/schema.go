@@ -22,15 +22,13 @@
  * SOFTWARE.
  */
 
-package docs
+package schema
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"cuelang.org/go/cue"
-	"github.com/fatih/color"
 )
 
 // SchemaField represents a single field in a CUE schema tree.
@@ -45,10 +43,30 @@ type SchemaField struct {
 	Children  []*SchemaField
 }
 
+// walkOptions holds options for WalkSchema.
+type walkOptions struct {
+	expand bool
+}
+
+// WalkOption is a functional option for WalkSchema.
+type WalkOption func(*walkOptions)
+
+// WithExpand controls whether referenced definitions are inlined (true)
+// or shown by name (false).
+func WithExpand(expand bool) WalkOption {
+	return func(o *walkOptions) {
+		o.expand = expand
+	}
+}
+
 // WalkSchema traverses a cue.Value's schema tree and returns a tree of SchemaField.
-// If expand is true, referenced definitions are inlined; otherwise their name is shown.
-func WalkSchema(value cue.Value, expand bool) []*SchemaField {
-	return walkFields(value, expand)
+// Options can be provided to control behavior (e.g., WithExpand).
+func WalkSchema(value cue.Value, opts ...WalkOption) []*SchemaField {
+	o := &walkOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+	return walkFields(value, o.expand)
 }
 
 func walkFields(value cue.Value, expand bool) []*SchemaField {
@@ -206,96 +224,5 @@ func formatKind(k cue.Kind) string {
 		return "null"
 	default:
 		return k.String()
-	}
-}
-
-var (
-	commentMark  = color.New(color.FgHiBlack).SprintFunc()
-	commentText  = color.New(color.Italic).SprintFunc()
-	fieldName    = color.New(color.Bold).SprintFunc()
-	typeName     = color.New(color.FgGreen).SprintFunc()
-	defaultValue = color.New(color.FgYellow).SprintFunc()
-)
-
-// FormatSchema writes a human-readable schema tree to w.
-func FormatSchema(w io.Writer, fields []*SchemaField, indent int) {
-	for _, f := range fields {
-		prefix := strings.Repeat(" ", indent)
-
-		// Build the name with optionality markers
-		name := f.Name
-		if f.IsPattern {
-			// Pattern constraints already have brackets
-		} else if f.Required {
-			name += "!"
-		} else if f.Optional {
-			name += "?"
-		}
-
-		// Doc comments always go above the field
-		if f.Doc != "" {
-			for _, line := range strings.Split(f.Doc, "\n") {
-				fmt.Fprintf(w, "%s%s %s\n", prefix, commentMark("//"), commentText(line))
-			}
-		}
-
-		if len(f.Children) > 0 {
-			fmt.Fprintf(w, "%s%s\n", prefix, fieldName(name))
-			FormatSchema(w, f.Children, indent+2)
-		} else {
-			typeStr := f.Type
-			if f.Default != "" {
-				typeStr = typeName(f.Type) + defaultValue(fmt.Sprintf(" (default: %s)", f.Default))
-			} else {
-				typeStr = typeName(typeStr)
-			}
-
-			// Pad the name to at least 20 chars for alignment
-			padding := 20 - len(name)
-			if padding < 1 {
-				padding = 1
-			}
-			fmt.Fprintf(w, "%s%s%s%s\n", prefix, fieldName(name), strings.Repeat(" ", padding), typeStr)
-		}
-	}
-}
-
-// FormatSchemaMarkdown writes a schema tree to w in markdown format.
-// Fields are rendered as nested lists with doc comments, types, and defaults.
-func FormatSchemaMarkdown(w io.Writer, fields []*SchemaField, depth int) {
-	for _, f := range fields {
-		indent := strings.Repeat("  ", depth)
-
-		// Build the name with optionality markers
-		name := f.Name
-		optMarker := ""
-		if f.IsPattern {
-			// Pattern constraints already have brackets
-		} else if f.Required {
-			optMarker = " (required)"
-		} else if f.Optional {
-			optMarker = " (optional)"
-		}
-
-		// Print doc comments before the field
-		if f.Doc != "" {
-			for _, line := range strings.Split(f.Doc, "\n") {
-				fmt.Fprintf(w, "%s%s\n", indent, line)
-			}
-			fmt.Fprintln(w)
-		}
-
-		if len(f.Children) > 0 {
-			// Struct field: bold name followed by nested children
-			fmt.Fprintf(w, "%s- **%s**%s\n", indent, name, optMarker)
-			FormatSchemaMarkdown(w, f.Children, depth+1)
-		} else {
-			// Leaf field: name with type and optional default
-			typeInfo := fmt.Sprintf("`%s`", f.Type)
-			if f.Default != "" {
-				typeInfo = fmt.Sprintf("`%s` (default: %s)", f.Type, f.Default)
-			}
-			fmt.Fprintf(w, "%s- **%s**%s: %s\n", indent, name, optMarker, typeInfo)
-		}
 	}
 }

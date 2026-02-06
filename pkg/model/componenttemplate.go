@@ -38,6 +38,7 @@ import (
 	"cuelang.org/go/mod/modconfig"
 	"cuelang.org/go/mod/modfile"
 	"cuelang.org/go/mod/module"
+	"go-valkyrie.com/odin/pkg/schema"
 )
 
 type ComponentTemplate struct {
@@ -46,6 +47,16 @@ type ComponentTemplate struct {
 	Module  string
 	Version string
 	Value   cue.Value
+}
+
+// ConfigSchema returns the schema fields for this template's config section.
+// Options can be provided to control behavior (e.g., schema.WithExpand).
+func (t *ComponentTemplate) ConfigSchema(opts ...schema.WalkOption) []*schema.SchemaField {
+	configValue := t.Value.LookupPath(cue.ParsePath("config"))
+	if configValue.Err() != nil {
+		return nil
+	}
+	return schema.WalkSchema(configValue, opts...)
 }
 
 func (b *Bundle) ComponentTemplates(ctx context.Context) iter.Seq2[*ComponentTemplate, error] {

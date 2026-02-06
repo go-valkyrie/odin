@@ -37,6 +37,7 @@ import (
 	"github.com/fatih/color"
 	"go-valkyrie.com/odin/pkg/docs"
 	"go-valkyrie.com/odin/pkg/model"
+	"go-valkyrie.com/odin/pkg/schema"
 )
 
 func (o *Options) Run(ctx context.Context) error {
@@ -162,12 +163,11 @@ func runText(tmpl *model.ComponentTemplate, opts Options, w io.Writer) error {
 	printConcreteField(w, tmpl.Value, "kind", label, value)
 
 	// Print config schema
-	configValue := tmpl.Value.LookupPath(cue.ParsePath("config"))
-	if configValue.Err() == nil {
+	fields := tmpl.ConfigSchema(schema.WithExpand(opts.Expand))
+	if len(fields) > 0 {
 		fmt.Fprintln(w)
 		fmt.Fprintln(w, header("Config:"))
-		fields := docs.WalkSchema(configValue, opts.Expand)
-		docs.FormatSchema(w, fields, 2)
+		schema.FormatSchema(w, fields, 2)
 	}
 
 	return nil
@@ -236,12 +236,11 @@ func runMarkdown(tmpl *model.ComponentTemplate, opts Options, w io.Writer) error
 	}
 
 	// Print config schema
-	configValue := tmpl.Value.LookupPath(cue.ParsePath("config"))
-	if configValue.Err() == nil {
+	fields := tmpl.ConfigSchema(schema.WithExpand(opts.Expand))
+	if len(fields) > 0 {
 		fmt.Fprintln(w, "## Config")
 		fmt.Fprintln(w)
-		fields := docs.WalkSchema(configValue, opts.Expand)
-		docs.FormatSchemaMarkdown(w, fields, 0)
+		schema.FormatSchemaMarkdown(w, fields, 0)
 	}
 
 	return nil
