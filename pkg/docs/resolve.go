@@ -26,6 +26,7 @@ package docs
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"go-valkyrie.com/odin/pkg/model"
@@ -141,4 +142,41 @@ func shorthandName(pkg string) string {
 		return pkg[idx+1:]
 	}
 	return pkg
+}
+
+// ResolvePackagePath performs case-insensitive prefix matching against template Package fields.
+// Both the reference and package paths have @vN suffixes stripped before comparison.
+// Returns all matching templates, sorted by Package then Name.
+func ResolvePackagePath(reference string, templates []*model.ComponentTemplate) []*model.ComponentTemplate {
+	// Strip @vN from reference if present
+	refPath := reference
+	if idx := strings.LastIndex(refPath, "@"); idx != -1 {
+		refPath = refPath[:idx]
+	}
+	refPathLower := strings.ToLower(refPath)
+
+	var matches []*model.ComponentTemplate
+	for _, tmpl := range templates {
+		// Strip @vN from package path
+		pkgPath := tmpl.Package
+		if idx := strings.LastIndex(pkgPath, "@"); idx != -1 {
+			pkgPath = pkgPath[:idx]
+		}
+		pkgPathLower := strings.ToLower(pkgPath)
+
+		// Check if package path starts with reference
+		if strings.HasPrefix(pkgPathLower, refPathLower) {
+			matches = append(matches, tmpl)
+		}
+	}
+
+	// Sort by Package then Name
+	sort.Slice(matches, func(i, j int) bool {
+		if matches[i].Package != matches[j].Package {
+			return matches[i].Package < matches[j].Package
+		}
+		return matches[i].Name < matches[j].Name
+	})
+
+	return matches
 }

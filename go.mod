@@ -8,6 +8,7 @@ require (
 	cuelang.org/go v0.15.4
 	github.com/chainguard-dev/git-urls v1.0.2
 	github.com/dpotapov/slogpfx v0.0.0-20230917063348-41a73c95c536
+	github.com/fatih/color v1.18.0
 	github.com/go-git/go-git/v5 v5.16.0
 	github.com/lmittmann/tint v1.0.7
 	github.com/mattn/go-colorable v0.1.14
@@ -86,7 +87,6 @@ require (
 	github.com/emicklei/proto v1.14.2 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/evanw/esbuild v0.25.3 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect

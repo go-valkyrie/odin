@@ -38,6 +38,7 @@ type componentsCmd struct {
 	config     config.Manager
 	cacheDir   string
 	bundlePath string
+	format     string
 }
 
 func (c *componentsCmd) Args(cmd *cobra.Command, args []string) error {
@@ -77,6 +78,7 @@ func (c *componentsCmd) PreRunE(cmd *cobra.Command, args []string) error {
 func (c *componentsCmd) RunE(cmd *cobra.Command, args []string) error {
 	opts := components.Options{
 		BundlePath: c.bundlePath,
+		Format:     c.format,
 		CacheDir:   c.cacheDir,
 		Logger:     c.logger.With("component", "components"),
 	}
@@ -89,7 +91,9 @@ func (c *componentsCmd) RunE(cmd *cobra.Command, args []string) error {
 }
 
 func newComponentsCmd() *cobra.Command {
-	c := &componentsCmd{}
+	c := &componentsCmd{
+		format: "table",
+	}
 	cmd := &cobra.Command{
 		Use:     "components [location]",
 		Short:   "list available component templates from bundle dependencies",
@@ -97,6 +101,8 @@ func newComponentsCmd() *cobra.Command {
 		PreRunE: c.PreRunE,
 		RunE:    c.RunE,
 	}
+
+	cmd.Flags().StringVarP(&c.format, "format", "f", "table", "output format (table, json)")
 
 	return cmd
 }

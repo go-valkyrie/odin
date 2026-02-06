@@ -31,6 +31,7 @@ import (
 
 type Options struct {
 	BundlePath string
+	Format     string
 	CacheDir   string
 	Logger     *slog.Logger
 	Registries map[string]string

@@ -28,12 +28,15 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"cuelang.org/go/cue"
+	"cuelang.org/go/cue/build"
 	"cuelang.org/go/cue/load"
 	"cuelang.org/go/mod/modconfig"
+	"cuelang.org/go/mod/modfile"
 	"cuelang.org/go/mod/module"
 )
 
@@ -51,27 +54,34 @@ func (b *Bundle) ComponentTemplates(ctx context.Context) iter.Seq2[*ComponentTem
 
 		logger.Debug("starting component template discovery", "sourcePath", b.sourcePath)
 
-		// Load the bundle's build.Instance to access ModuleFile and deps.
-		bundleInsts := load.Instances([]string{"."}, &load.Config{
-			Dir: b.sourcePath,
-			Env: b.env,
-		})
-		if len(bundleInsts) == 0 {
-			logger.Debug("no bundle instances returned from load.Instances")
+		// Find the module root by walking up from sourcePath
+		moduleRoot, err := findModuleRoot(b.sourcePath)
+		if err != nil {
+			logger.Debug("failed to find module root", "err", err)
+			if !yield(nil, fmt.Errorf("finding module root: %w", err)) {
+				return
+			}
 			return
 		}
-		bundleInst := bundleInsts[0]
-		if bundleInst.Err != nil {
-			logger.Debug("bundle instance has error", "err", bundleInst.Err)
-			if !yield(nil, bundleInst.Err) {
+		logger.Debug("found module root", "root", moduleRoot)
+
+		// Load the module file directly from cue.mod/module.cue
+		moduleFilePath := filepath.Join(moduleRoot, "cue.mod", "module.cue")
+		moduleFileData, err := os.ReadFile(moduleFilePath)
+		if err != nil {
+			logger.Debug("failed to read module file", "err", err)
+			if !yield(nil, fmt.Errorf("reading module file: %w", err)) {
 				return
 			}
 			return
 		}
 
-		moduleFile := bundleInst.ModuleFile
-		if moduleFile == nil {
-			logger.Debug("bundle instance has no ModuleFile")
+		moduleFile, err := modfile.Parse(moduleFileData, moduleFilePath)
+		if err != nil {
+			logger.Debug("failed to parse module file", "err", err)
+			if !yield(nil, fmt.Errorf("parsing module file: %w", err)) {
+				return
+			}
 			return
 		}
 
@@ -156,69 +166,125 @@ func (b *Bundle) ComponentTemplates(ctx context.Context) iter.Seq2[*ComponentTem
 			logger.Debug("discovered packages in module", "dep", depPath, "packageCount", len(pkgInsts))
 
 			for _, inst := range pkgInsts {
-				if inst.Err != nil {
-					logger.Debug("skipping package with load error", "pkg", inst.ImportPath, "err", inst.Err)
-					continue
-				}
-
-				logger.Debug("building package", "pkg", inst.ImportPath)
-
-				value := b.ctx.BuildInstance(inst)
-				if value.Err() != nil {
-					logger.Debug("skipping package that failed to build", "pkg", inst.ImportPath, "err", value.Err())
-					continue
-				}
-
-				fieldIter, err := value.Fields(cue.Definitions(true))
-				if err != nil {
-					logger.Debug("skipping package with no definition fields", "pkg", inst.ImportPath, "err", err)
-					continue
-				}
-
-				for fieldIter.Next() {
-					name := fieldIter.Selector().String()
-					// Skip private definitions.
-					if strings.HasPrefix(name, "_#") {
-						continue
-					}
-					// Skip non-definition selectors.
-					if !fieldIter.Selector().IsDefinition() {
-						continue
-					}
-
-					logger.Debug("checking definition against #ComponentBase", "pkg", inst.ImportPath, "def", name)
-
-					unified := fieldIter.Value().Unify(componentBase)
-					if unified.Err() != nil {
-						logger.Debug("definition does not unify with #ComponentBase", "pkg", inst.ImportPath, "def", name, "err", unified.Err())
-						continue
-					}
-
-					// Check that apiVersion and kind are concrete after unification.
-					// This filters out open types that unify with #ComponentBase
-					// but aren't actually component templates.
-					apiVersion := unified.LookupPath(cue.ParsePath("apiVersion"))
-					kind := unified.LookupPath(cue.ParsePath("kind"))
-					if apiVersion.Err() != nil || kind.Err() != nil ||
-						!apiVersion.IsConcrete() || !kind.IsConcrete() {
-						logger.Debug("definition unifies but lacks concrete apiVersion/kind",
-							"pkg", inst.ImportPath, "def", name)
-						continue
-					}
-
-					logger.Debug("found component template", "pkg", inst.ImportPath, "def", name)
-					tmpl := &ComponentTemplate{
-						Package: inst.ImportPath,
-						Name:    name,
-						Module:  depPath,
-						Version: dep.Version,
-						Value:   fieldIter.Value(),
-					}
-					if !yield(tmpl, nil) {
-						return
-					}
+				if !b.scanPackageForTemplates(inst, componentBase, depPath, dep.Version, yield) {
+					return
 				}
 			}
 		}
+
+		// Scan local module for templates
+		logger.Debug("scanning local module for templates", "moduleRoot", moduleRoot)
+		localInsts := load.Instances([]string{"./..."}, &load.Config{
+			Dir: moduleRoot,
+			Env: b.env,
+		})
+		logger.Debug("discovered local packages", "packageCount", len(localInsts))
+		for _, inst := range localInsts {
+			if !b.scanPackageForTemplates(inst, componentBase, moduleFile.Module, "", yield) {
+				return
+			}
+		}
+	}
+}
+
+// scanPackageForTemplates scans a single package instance for component templates.
+// Returns false if the caller should stop yielding (early termination requested).
+func (b *Bundle) scanPackageForTemplates(
+	inst *build.Instance,
+	componentBase cue.Value,
+	modulePath string,
+	version string,
+	yield func(*ComponentTemplate, error) bool,
+) bool {
+	logger := b.logger
+
+	if inst.Err != nil {
+		logger.Debug("skipping package with load error", "pkg", inst.ImportPath, "err", inst.Err)
+		return true
+	}
+
+	logger.Debug("building package", "pkg", inst.ImportPath)
+
+	value := b.ctx.BuildInstance(inst)
+	if value.Err() != nil {
+		logger.Debug("skipping package that failed to build", "pkg", inst.ImportPath, "err", value.Err())
+		return true
+	}
+
+	fieldIter, err := value.Fields(cue.Definitions(true))
+	if err != nil {
+		logger.Debug("skipping package with no definition fields", "pkg", inst.ImportPath, "err", err)
+		return true
+	}
+
+	for fieldIter.Next() {
+		name := fieldIter.Selector().String()
+		// Skip private definitions.
+		if strings.HasPrefix(name, "_#") {
+			continue
+		}
+		// Skip non-definition selectors.
+		if !fieldIter.Selector().IsDefinition() {
+			continue
+		}
+
+		logger.Debug("checking definition against #ComponentBase", "pkg", inst.ImportPath, "def", name)
+
+		unified := fieldIter.Value().Unify(componentBase)
+		if unified.Err() != nil {
+			logger.Debug("definition does not unify with #ComponentBase", "pkg", inst.ImportPath, "def", name, "err", unified.Err())
+			continue
+		}
+
+		// Check that apiVersion and kind are concrete after unification.
+		// This filters out open types that unify with #ComponentBase
+		// but aren't actually component templates.
+		apiVersion := unified.LookupPath(cue.ParsePath("apiVersion"))
+		kind := unified.LookupPath(cue.ParsePath("kind"))
+		if apiVersion.Err() != nil || kind.Err() != nil ||
+			!apiVersion.IsConcrete() || !kind.IsConcrete() {
+			logger.Debug("definition unifies but lacks concrete apiVersion/kind",
+				"pkg", inst.ImportPath, "def", name)
+			continue
+		}
+
+		logger.Debug("found component template", "pkg", inst.ImportPath, "def", name)
+		tmpl := &ComponentTemplate{
+			Package: inst.ImportPath,
+			Name:    name,
+			Module:  modulePath,
+			Version: version,
+			Value:   fieldIter.Value(),
+		}
+		if !yield(tmpl, nil) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// findModuleRoot walks up from the given directory to find cue.mod/module.cue.
+// Returns the directory containing cue.mod, or an error if not found.
+func findModuleRoot(startPath string) (string, error) {
+	absPath, err := filepath.Abs(startPath)
+	if err != nil {
+		return "", err
+	}
+
+	currentPath := absPath
+	for {
+		moduleFilePath := filepath.Join(currentPath, "cue.mod", "module.cue")
+		if _, err := os.Stat(moduleFilePath); err == nil {
+			return currentPath, nil
+		}
+
+		// Move up one directory
+		parentPath := filepath.Dir(currentPath)
+		if parentPath == currentPath {
+			// Reached the root without finding cue.mod/module.cue
+			return "", fmt.Errorf("no cue.mod/module.cue found in %s or any parent directory", startPath)
+		}
+		currentPath = parentPath
 	}
 }

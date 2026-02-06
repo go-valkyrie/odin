@@ -40,6 +40,9 @@ type docsCmd struct {
 	bundlePath string
 	reference  string
 	expand     bool
+	format     string
+	outputPath string
+	noSummary  bool
 }
 
 func (c *docsCmd) Args(cmd *cobra.Command, args []string) error {
@@ -73,10 +76,21 @@ func (c *docsCmd) PreRunE(cmd *cobra.Command, args []string) error {
 }
 
 func (c *docsCmd) RunE(cmd *cobra.Command, args []string) error {
+	// Validate format-specific requirements
+	if (c.format == "markdown-multi" || c.format == "mdm" || c.format == "mdbook" || c.format == "mdb") && c.outputPath == "" {
+		return fmt.Errorf("format %q requires -o/--output to specify a directory path", c.format)
+	}
+	if c.noSummary && c.format != "mdbook" && c.format != "mdb" {
+		return fmt.Errorf("--no-summary is only valid with mdbook format")
+	}
+
 	opts := docs.Options{
 		BundlePath: c.bundlePath,
 		Reference:  c.reference,
 		Expand:     c.expand,
+		Format:     c.format,
+		OutputPath: c.outputPath,
+		NoSummary:  c.noSummary,
 		CacheDir:   c.cacheDir,
 		Logger:     c.logger.With("component", "docs"),
 	}
@@ -91,18 +105,32 @@ func (c *docsCmd) RunE(cmd *cobra.Command, args []string) error {
 func newDocsCmd() *cobra.Command {
 	c := &docsCmd{
 		bundlePath: ".",
+		format:     "text",
 	}
 	cmd := &cobra.Command{
 		Use:   "docs <reference>",
-		Short: "show documentation for a component template",
-		Long:  `Display documentation for a component template, including doc comments and a formatted schema of its config fields.`,
-		Args:  c.Args,
+		Short: "show documentation for a component template or package",
+		Long: `Display documentation for a component template or all templates under a package path.
+
+Reference formats:
+  - Single template: "deployment", "workload.Deployment", "pkg/path:#Definition"
+  - Package path: "platform.vituity.com/common", "platform.vituity.com/common/workload"
+
+Output formats (-f/--format):
+  - text (default): colored terminal output
+  - markdown/md: single markdown document (concatenated if multiple templates)
+  - markdown-multi/mdm: one markdown file per template (requires -o directory)
+  - mdbook/mdb: same as mdm plus SUMMARY.md (requires -o directory)`,
+		Args:    c.Args,
 		PreRunE: c.PreRunE,
 		RunE:    c.RunE,
 	}
 
 	cmd.Flags().StringVarP(&c.bundlePath, "bundle", "b", ".", "bundle location")
 	cmd.Flags().BoolVar(&c.expand, "expand", false, "recursively expand referenced definitions inline")
+	cmd.Flags().StringVarP(&c.format, "format", "f", "text", "output format (text, markdown/md, markdown-multi/mdm, mdbook/mdb)")
+	cmd.Flags().StringVarP(&c.outputPath, "output", "o", "", "output file or directory path (required for mdm/mdb formats)")
+	cmd.Flags().BoolVar(&c.noSummary, "no-summary", false, "disable SUMMARY.md generation in mdbook format")
 
 	return cmd
 }
