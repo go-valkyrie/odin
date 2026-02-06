@@ -151,6 +151,8 @@ func (l *bundleLoader) Load() (*Bundle, error) {
 	}
 
 	bundlePath := l.source.String()
+	b.sourcePath = bundlePath
+	b.logger = logger
 	cfg, err := loadConfig(bundlePath)
 	if err != nil {
 		return nil, err
@@ -214,6 +216,8 @@ type Bundle struct {
 	env        []string
 	value      cue.Value
 	registries map[string]string
+	sourcePath string
+	logger     *slog.Logger
 }
 
 func newBundle(cuectx *cue.Context) (*Bundle, error) {
@@ -250,6 +254,8 @@ func (b *Bundle) LoadValues(source modelSource) (*Bundle, error) {
 		env:        b.env,
 		value:      value,
 		registries: b.registries,
+		sourcePath: b.sourcePath,
+		logger:     b.logger,
 	}
 	return newBundle, nil
 }
