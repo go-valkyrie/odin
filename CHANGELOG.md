@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.1](https://github.com/go-valkyrie/odin/compare/v0.3.0...v0.3.1) (2026-02-06)
+
+
+### Features
+
+* add odin docs and odin components commands ([05913d8](https://github.com/go-valkyrie/odin/commit/05913d872188289ea923c825b19bc17a971b3448))
+
+
+### Bug Fixes
+
+* set environment correctly for `odin cue` command ([fa5527b](https://github.com/go-valkyrie/odin/commit/fa5527bb517c5ff51297d0d506703fc75143117d))
+
 ## [0.3.0](https://github.com/go-valkyrie/odin/compare/v0.2.5...v0.3.0) (2026-01-08)
 
 
