@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package template
+package test
 
 import (
 	"io"
@@ -30,20 +30,17 @@ import (
 )
 
 type Options struct {
-	BundlePath      string
-	CacheDir        string
-	Logger          *slog.Logger
-	Registries      map[string]string
-	ValuesLocations []string
-	ValuesPath      string
-	ValuesFormat    string
-	Output          io.Writer
+	ModulePaths []string          // local CUE modules to serve
+	TestPaths   []string          // txtar files or directories
+	Update      bool              // -u flag
+	Verbose     bool
+	CacheDir    string
+	Logger      *slog.Logger
+	Registries  map[string]string // global registries (includes hard-coded odin registries)
 }
 
 func DefaultOptions() *Options {
 	return &Options{
-		Registries:      make(map[string]string),
-		Logger:          slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{})),
-		ValuesLocations: []string{},
+		Logger: slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{})),
 	}
 }

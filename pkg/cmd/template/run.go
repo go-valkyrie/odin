@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"slices"
 
 	"cuelang.org/go/cue"
@@ -51,6 +52,11 @@ func run(ctx context.Context, opts Options) error {
 	logger := opts.Logger
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
+	}
+
+	w := opts.Output
+	if w == nil {
+		w = io.Writer(os.Stdout)
 	}
 
 	modelOpts := []model.Option{
@@ -88,7 +94,7 @@ func run(ctx context.Context, opts Options) error {
 
 	for i, resource := range resources {
 		if i > 0 {
-			fmt.Printf("---\n")
+			fmt.Fprintf(w, "---\n")
 		}
 		if err := resource.Value().Validate(cue.Concrete(true)); err != nil {
 			return err
@@ -96,8 +102,8 @@ func run(ctx context.Context, opts Options) error {
 		if data, err := resource.ToYAML(); err != nil {
 			return err
 		} else {
-			fmt.Printf("# %v.%v\n", resource.Owner().Selector(), resource.Selector())
-			fmt.Print(string(data))
+			fmt.Fprintf(w, "# %v.%v\n", resource.Owner().Selector(), resource.Selector())
+			fmt.Fprint(w, string(data))
 		}
 	}
 
