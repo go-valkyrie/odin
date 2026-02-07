@@ -122,3 +122,125 @@ func FormatSchemaMarkdown(w io.Writer, fields []*SchemaField, depth int) {
 		}
 	}
 }
+
+// FormatDeclarations writes declarations grouped by category to w in terminal format.
+func FormatDeclarations(w io.Writer, declarations []*Declaration, indent int) {
+	// Group declarations by category
+	var refs, exts, others []*Declaration
+	for _, d := range declarations {
+		switch d.Category {
+		case DeclarationRef:
+			refs = append(refs, d)
+		case DeclarationExt:
+			exts = append(exts, d)
+		case DeclarationOther:
+			others = append(others, d)
+		}
+	}
+
+	// Format each category group
+	if len(refs) > 0 {
+		header := color.New(color.Bold, color.FgCyan).SprintFunc()
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, header("References:"))
+		formatDeclarationGroup(w, refs, indent)
+	}
+
+	if len(exts) > 0 {
+		header := color.New(color.Bold, color.FgCyan).SprintFunc()
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, header("Extensions:"))
+		formatDeclarationGroup(w, exts, indent)
+	}
+
+	if len(others) > 0 {
+		header := color.New(color.Bold, color.FgCyan).SprintFunc()
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, header("Declarations:"))
+		formatDeclarationGroup(w, others, indent)
+	}
+}
+
+func formatDeclarationGroup(w io.Writer, declarations []*Declaration, indent int) {
+	for _, d := range declarations {
+		prefix := strings.Repeat(" ", indent)
+
+		// Doc comments always go above the declaration
+		if d.Doc != "" {
+			for _, line := range strings.Split(d.Doc, "\n") {
+				fmt.Fprintf(w, "%s%s %s\n", prefix, commentMark("//"), commentText(line))
+			}
+		}
+
+		if len(d.Children) > 0 {
+			fmt.Fprintf(w, "%s%s\n", prefix, fieldName(d.Name))
+			FormatSchema(w, d.Children, indent+2)
+		} else {
+			// Pad the name to at least 20 chars for alignment
+			padding := 20 - len(d.Name)
+			if padding < 1 {
+				padding = 1
+			}
+			fmt.Fprintf(w, "%s%s%s%s\n", prefix, fieldName(d.Name), strings.Repeat(" ", padding), typeName(d.Type))
+		}
+	}
+}
+
+// FormatDeclarationsMarkdown writes declarations grouped by category to w in markdown format.
+func FormatDeclarationsMarkdown(w io.Writer, declarations []*Declaration, depth int) {
+	// Group declarations by category
+	var refs, exts, others []*Declaration
+	for _, d := range declarations {
+		switch d.Category {
+		case DeclarationRef:
+			refs = append(refs, d)
+		case DeclarationExt:
+			exts = append(exts, d)
+		case DeclarationOther:
+			others = append(others, d)
+		}
+	}
+
+	// Format each category group
+	if len(refs) > 0 {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "## References")
+		fmt.Fprintln(w)
+		formatDeclarationGroupMarkdown(w, refs, depth)
+	}
+
+	if len(exts) > 0 {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "## Extensions")
+		fmt.Fprintln(w)
+		formatDeclarationGroupMarkdown(w, exts, depth)
+	}
+
+	if len(others) > 0 {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "## Declarations")
+		fmt.Fprintln(w)
+		formatDeclarationGroupMarkdown(w, others, depth)
+	}
+}
+
+func formatDeclarationGroupMarkdown(w io.Writer, declarations []*Declaration, depth int) {
+	for _, d := range declarations {
+		// Print doc comments
+		if d.Doc != "" {
+			for _, line := range strings.Split(d.Doc, "\n") {
+				fmt.Fprintln(w, line)
+			}
+			fmt.Fprintln(w)
+		}
+
+		if len(d.Children) > 0 {
+			// Declaration with struct type: name followed by nested children
+			fmt.Fprintf(w, "- **%s**\n", d.Name)
+			FormatSchemaMarkdown(w, d.Children, depth+1)
+		} else {
+			// Leaf declaration: name with type
+			fmt.Fprintf(w, "- **%s**: `%s`\n", d.Name, d.Type)
+		}
+	}
+}

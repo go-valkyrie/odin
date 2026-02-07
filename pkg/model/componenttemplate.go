@@ -59,6 +59,12 @@ func (t *ComponentTemplate) ConfigSchema(opts ...schema.WalkOption) []*schema.Sc
 	return schema.WalkSchema(configValue, opts...)
 }
 
+// Declarations returns root-level definitions annotated with @odin attribute.
+// Options can be provided to control behavior (e.g., schema.WithExpand).
+func (t *ComponentTemplate) Declarations(opts ...schema.WalkOption) []*schema.Declaration {
+	return schema.WalkDeclarations(t.Value, opts...)
+}
+
 func (b *Bundle) ComponentTemplates(ctx context.Context) iter.Seq2[*ComponentTemplate, error] {
 	return func(yield func(*ComponentTemplate, error) bool) {
 		logger := b.logger

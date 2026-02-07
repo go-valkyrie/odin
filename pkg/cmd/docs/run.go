@@ -170,6 +170,12 @@ func runText(tmpl *model.ComponentTemplate, opts Options, w io.Writer) error {
 		schema.FormatSchema(w, fields, 2)
 	}
 
+	// Print declarations
+	declarations := tmpl.Declarations(schema.WithExpand(opts.Expand))
+	if len(declarations) > 0 {
+		schema.FormatDeclarations(w, declarations, 2)
+	}
+
 	return nil
 }
 
@@ -241,6 +247,12 @@ func runMarkdown(tmpl *model.ComponentTemplate, opts Options, w io.Writer) error
 		fmt.Fprintln(w, "## Config")
 		fmt.Fprintln(w)
 		schema.FormatSchemaMarkdown(w, fields, 0)
+	}
+
+	// Print declarations
+	declarations := tmpl.Declarations(schema.WithExpand(opts.Expand))
+	if len(declarations) > 0 {
+		schema.FormatDeclarationsMarkdown(w, declarations, 0)
 	}
 
 	return nil
