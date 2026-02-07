@@ -356,3 +356,185 @@ _#SecretStoreRef: {
 		}
 	})
 }
+
+func TestOdinExpandAttribute(t *testing.T) {
+	src := `
+package test
+
+// Private definition for references
+_#SecretStoreRef: {
+	name: string
+	kind: string | *"SecretStore"
+}
+
+#Component: {
+	config: {
+		// Regular field without @odin(expand) - should not expand by default
+		regularRef: _#SecretStoreRef
+
+		// Field with @odin(expand) - should always expand
+		forcedRef: _#SecretStoreRef @odin(expand)
+	}
+
+	// Declaration without @odin(expand)
+	#regularDecl: _#SecretStoreRef & {
+		@odin(ref)
+		name: "regular"
+	}
+
+	// Declaration with @odin(expand)
+	#forcedDecl: _#SecretStoreRef & {
+		@odin(ref)
+		@odin(expand)
+		name: "forced"
+	}
+}
+`
+
+	ctx := cuecontext.New()
+	value := ctx.CompileString(src)
+	if value.Err() != nil {
+		t.Fatalf("failed to compile source: %v", value.Err())
+	}
+
+	componentValue := value.LookupPath(cue.ParsePath("#Component"))
+	if componentValue.Err() != nil {
+		t.Fatalf("failed to lookup #Component: %v", componentValue.Err())
+	}
+
+	t.Run("config field without @odin(expand) shows type name when expand=false", func(t *testing.T) {
+		configValue := componentValue.LookupPath(cue.ParsePath("config"))
+		if configValue.Err() != nil {
+			t.Fatalf("failed to lookup config: %v", configValue.Err())
+		}
+
+		fields := WalkSchema(configValue, WithExpand(false))
+
+		var regularField *SchemaField
+		for _, f := range fields {
+			if f.Name == "regularRef" {
+				regularField = f
+				break
+			}
+		}
+
+		if regularField == nil {
+			t.Fatalf("regularRef field not found")
+		}
+
+		if regularField.Type != "_#SecretStoreRef" {
+			t.Errorf("expected type _#SecretStoreRef, got %s", regularField.Type)
+		}
+
+		if len(regularField.Children) > 0 {
+			t.Errorf("expected no children, got %d", len(regularField.Children))
+		}
+	})
+
+	t.Run("config field with @odin(expand) expands even when expand=false", func(t *testing.T) {
+		configValue := componentValue.LookupPath(cue.ParsePath("config"))
+		if configValue.Err() != nil {
+			t.Fatalf("failed to lookup config: %v", configValue.Err())
+		}
+
+		fields := WalkSchema(configValue, WithExpand(false))
+
+		var forcedField *SchemaField
+		for _, f := range fields {
+			if f.Name == "forcedRef" {
+				forcedField = f
+				break
+			}
+		}
+
+		if forcedField == nil {
+			t.Fatalf("forcedRef field not found")
+		}
+
+		if len(forcedField.Children) == 0 {
+			t.Errorf("expected children due to @odin(expand), got none")
+		}
+
+		// Verify we have name and kind fields
+		foundName := false
+		foundKind := false
+		for _, child := range forcedField.Children {
+			if child.Name == "name" {
+				foundName = true
+			}
+			if child.Name == "kind" {
+				foundKind = true
+			}
+		}
+
+		if !foundName {
+			t.Errorf("expected to find 'name' field in expanded children")
+		}
+		if !foundKind {
+			t.Errorf("expected to find 'kind' field in expanded children")
+		}
+	})
+
+	t.Run("declaration without @odin(expand) shows type name when expand=false", func(t *testing.T) {
+		declarations := WalkDeclarations(componentValue, WithExpand(false))
+
+		var regularDecl *Declaration
+		for _, d := range declarations {
+			if d.Name == "#regularDecl" {
+				regularDecl = d
+				break
+			}
+		}
+
+		if regularDecl == nil {
+			t.Fatalf("#regularDecl not found")
+		}
+
+		if regularDecl.Type != "_#SecretStoreRef" {
+			t.Errorf("expected type _#SecretStoreRef, got %s", regularDecl.Type)
+		}
+
+		if len(regularDecl.Children) > 0 {
+			t.Errorf("expected no children, got %d", len(regularDecl.Children))
+		}
+	})
+
+	t.Run("declaration with @odin(expand) expands even when expand=false", func(t *testing.T) {
+		declarations := WalkDeclarations(componentValue, WithExpand(false))
+
+		var forcedDecl *Declaration
+		for _, d := range declarations {
+			if d.Name == "#forcedDecl" {
+				forcedDecl = d
+				break
+			}
+		}
+
+		if forcedDecl == nil {
+			t.Fatalf("#forcedDecl not found")
+		}
+
+		if len(forcedDecl.Children) == 0 {
+			t.Errorf("expected children due to @odin(expand), got none")
+		}
+
+		// Verify we have name and kind fields
+		foundName := false
+		foundKind := false
+		for _, child := range forcedDecl.Children {
+			if child.Name == "name" {
+				foundName = true
+			}
+			if child.Name == "kind" {
+				foundKind = true
+			}
+		}
+
+		if !foundName {
+			t.Errorf("expected to find 'name' field in expanded children")
+		}
+		if !foundKind {
+			t.Errorf("expected to find 'kind' field in expanded children")
+		}
+	})
+}

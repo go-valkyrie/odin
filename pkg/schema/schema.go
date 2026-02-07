@@ -90,6 +90,19 @@ func hasOdinHidden(v cue.Value) bool {
 	return false
 }
 
+// hasOdinExpand checks if a value has @odin(expand) attribute.
+func hasOdinExpand(v cue.Value) bool {
+	attrs := v.Attributes(cue.ValueAttr)
+	for _, a := range attrs {
+		if a.Name() == "odin" {
+			if arg, err := a.String(0); err == nil && arg == "expand" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // WalkSchema traverses a cue.Value's schema tree and returns a tree of SchemaField.
 // Options can be provided to control behavior (e.g., WithExpand).
 func WalkSchema(value cue.Value, opts ...WalkOption) []*SchemaField {
@@ -181,8 +194,11 @@ func populateFieldValue(f *SchemaField, v cue.Value, expand bool) {
 		return
 	}
 
+	// Check for @odin(expand) attribute to force expansion
+	forceExpand := hasOdinExpand(v)
+
 	// Check if this is a definition reference (unexpanded)
-	if !expand && kind == cue.StructKind {
+	if !expand && !forceExpand && kind == cue.StructKind {
 		if defName, ok := definitionRefName(v); ok {
 			f.Type = defName
 			return
@@ -372,8 +388,11 @@ func WalkDeclarations(value cue.Value, opts ...WalkOption) []*Declaration {
 		kind := v.IncompleteKind()
 
 		if kind == cue.StructKind {
+			// Check for @odin(expand) attribute to force expansion
+			forceExpand := hasOdinExpand(v)
+
 			// Check if this is a definition reference when not expanding
-			if !o.expand {
+			if !o.expand && !forceExpand {
 				if defName, ok := definitionRefName(v); ok {
 					decl.Type = defName
 					declarations = append(declarations, decl)
@@ -381,7 +400,7 @@ func WalkDeclarations(value cue.Value, opts ...WalkOption) []*Declaration {
 				}
 			}
 
-			children := walkFields(v, o.expand)
+			children := walkFields(v, o.expand || forceExpand)
 			if len(children) > 0 {
 				decl.Children = children
 				decl.Type = "{...}"
