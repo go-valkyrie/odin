@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/go-valkyrie/odin/compare/v0.4.0...v0.4.1) (2026-02-07)
+
+
+### Features
+
+* more updates to odin docs ([225eb07](https://github.com/go-valkyrie/odin/commit/225eb076055a224e93e80c42af0bdc2e62124412))
+* odin docs can now show select declarations on component templates ([2a20a93](https://github.com/go-valkyrie/odin/commit/2a20a938129465e0819e1cb3d2571d085887c0fc))
+
 ## [0.4.0](https://github.com/go-valkyrie/odin/compare/v0.3.1...v0.4.0) (2026-02-07)
 
 
