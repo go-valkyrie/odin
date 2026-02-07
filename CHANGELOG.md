@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/go-valkyrie/odin/compare/v0.3.1...v0.4.0) (2026-02-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* add push/pull/show docs commands
+
+### Features
+
+* add multi-template docs, local discovery, and directory output formats ([8a2cffd](https://github.com/go-valkyrie/odin/commit/8a2cffd92431194de7b6b524a6f8ae2c8d4abe72))
+* add odin test command ([5b5b60c](https://github.com/go-valkyrie/odin/commit/5b5b60cc60b368c7dc316bb2231b1556058db4a9))
+* add push/pull/show docs commands ([964ff4d](https://github.com/go-valkyrie/odin/commit/964ff4d592fc0859964c6e2e9763a34b847a9e6d))
+* docs and components subcommands now work in any subdirectory of a bundle ([127c95d](https://github.com/go-valkyrie/odin/commit/127c95d4be2499deeef8d2d043f2209bdf4728c6))
+
 ## [0.3.1](https://github.com/go-valkyrie/odin/compare/v0.3.0...v0.3.1) (2026-02-06)
 
 
