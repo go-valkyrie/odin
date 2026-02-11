@@ -139,3 +139,14 @@ etc. you can define it once and pull it into every bundle that deploys those
 services (this is also why Odin explicitly does not support something like
 Helm's subchart functionality, as bundles can be composed of components from
 multiple CUE modules).
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on contributing to this project, including our AI usage policy.
+
+## Support and Communication
+
+- **Bug reports and feature requests**: Open a [GitHub issue](https://github.com/go-valkyrie/odin/issues)
+- **Questions and general support**: Use [GitHub Discussions](https://github.com/go-valkyrie/odin/discussions)
+
+For "How do I...?" questions or general feedback, Discussions is the right place. Reserve issues for actionable bugs and feature requests.
