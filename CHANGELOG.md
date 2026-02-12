@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/go-valkyrie/odin/compare/v0.4.2...v0.4.3) (2026-02-12)
+
+
+### Bug Fixes
+
+* use Docker and Podman credentials for registry authentication ([7950e0b](https://github.com/go-valkyrie/odin/commit/7950e0b9cb6387e324672fe7d67efba9186b64ca))
+
 ## [0.4.2](https://github.com/go-valkyrie/odin/compare/v0.4.1...v0.4.2) (2026-02-12)
 
 
