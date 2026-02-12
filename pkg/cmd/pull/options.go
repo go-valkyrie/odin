@@ -1,4 +1,3 @@
-// Copyright 2025 Stefan Nuxoll
 // SPDX-License-Identifier: MIT
 
 package pull
