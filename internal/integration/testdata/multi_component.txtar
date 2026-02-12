@@ -1,0 +1,122 @@
+# Test multiple components in same bundle
+# Verifies sort order
+
+odin-setup
+exec odin cue mod tidy
+exec odin template
+cmp stdout expected.yaml
+
+-- cue.mod/module.cue --
+module: "test.example.com/multi@v0"
+language: version: "v0.14.0"
+deps: {
+    "example.com/platform@v0": {
+        v: "v0.0.0-test"
+    }
+    "go-valkyrie.com/odin/api@v0": {
+        v: "v0.0.1"
+    }
+}
+
+-- bundle.cue --
+package bundle
+
+import (
+    odin "go-valkyrie.com/odin/api/v1alpha1"
+    "example.com/platform/workload"
+)
+
+odin.#Bundle & {
+    metadata: name: "multi-component"
+
+    components: {
+        backend: workload.#WebApp & {
+            metadata: name: "backend"
+        }
+
+        frontend: workload.#WebApp & {
+            metadata: name: "frontend"
+        }
+    }
+
+    values: {
+        components: {
+            backend: {
+                image: "backend:latest"
+                replicas: 2
+                port: 8080
+            }
+            frontend: {
+                image: "frontend:latest"
+                replicas: 3
+            }
+        }
+    }
+}
+
+-- expected.yaml --
+# backend.deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: backend:latest
+          ports:
+            - containerPort: 8080
+---
+# backend.service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+# frontend.deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: frontend:latest
+          ports:
+            - containerPort: 80
+---
+# frontend.service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80

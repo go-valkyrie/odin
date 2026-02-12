@@ -1,0 +1,93 @@
+# Test values override via -f flag
+# Demonstrates overlay pattern with external values file
+
+odin-setup
+exec odin cue mod tidy
+exec odin template -f values.cue
+cmp stdout expected.yaml
+
+-- cue.mod/module.cue --
+module: "test.example.com/values@v0"
+language: version: "v0.14.0"
+deps: {
+    "example.com/platform@v0": {
+        v: "v0.0.0-test"
+    }
+    "go-valkyrie.com/odin/api@v0": {
+        v: "v0.0.1"
+    }
+}
+
+-- bundle.cue --
+package bundle
+
+import (
+    odin "go-valkyrie.com/odin/api/v1alpha1"
+    "example.com/platform/workload"
+)
+
+odin.#Bundle & {
+    metadata: name: "values-override"
+
+    components: {
+        api: workload.#WebApp & {
+            metadata: name: "api"
+        }
+    }
+
+    values: {
+        // Leave as constraints, no defaults
+        components: {
+            api: {
+                image: string
+                replicas: uint
+            }
+        }
+    }
+}
+
+-- values.cue --
+package bundle
+
+values: {
+    components: {
+        api: {
+            image: "api:prod"
+            replicas: 5
+        }
+    }
+}
+
+-- expected.yaml --
+# api.deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: api:prod
+          ports:
+            - containerPort: 80
+---
+# api.service
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    app: api
+  ports:
+    - port: 80
+      targetPort: 80

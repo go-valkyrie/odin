@@ -1,0 +1,66 @@
+# Test basic Deployment component template
+# Creates a single Deployment component (no Service)
+
+odin-setup
+exec odin cue mod tidy
+exec odin template
+cmp stdout expected.yaml
+
+-- cue.mod/module.cue --
+module: "test.example.com/deployment-basic@v0"
+language: version: "v0.14.0"
+deps: {
+    "example.com/platform@v0": {
+        v: "v0.0.0-test"
+    }
+    "go-valkyrie.com/odin/api@v0": {
+        v: "v0.0.1"
+    }
+}
+
+-- bundle.cue --
+package bundle
+
+import (
+    odin "go-valkyrie.com/odin/api/v1alpha1"
+    "example.com/platform/workload"
+)
+
+odin.#Bundle & {
+    metadata: name: "deployment-basic"
+
+    components: {
+        worker: workload.#Deployment & {
+            metadata: name: "worker"
+        }
+    }
+
+    values: {
+        components: {
+            worker: {
+                image: "worker:v1.0"
+                replicas: 2
+            }
+        }
+    }
+}
+
+-- expected.yaml --
+# worker.deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: worker:v1.0

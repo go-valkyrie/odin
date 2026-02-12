@@ -1,0 +1,80 @@
+# Test basic WebApp component template
+# Creates a single WebApp component which should generate Deployment + Service
+
+odin-setup
+exec odin cue mod tidy
+exec odin template
+cmp stdout expected.yaml
+
+-- cue.mod/module.cue --
+module: "test.example.com/webapp-basic@v0"
+language: version: "v0.14.0"
+deps: {
+    "example.com/platform@v0": {
+        v: "v0.0.0-test"
+    }
+    "go-valkyrie.com/odin/api@v0": {
+        v: "v0.0.1"
+    }
+}
+
+-- bundle.cue --
+package bundle
+
+import (
+    odin "go-valkyrie.com/odin/api/v1alpha1"
+    "example.com/platform/workload"
+)
+
+odin.#Bundle & {
+    metadata: name: "webapp-basic"
+
+    components: {
+        myapp: workload.#WebApp & {
+            metadata: name: "myapp"
+        }
+    }
+
+    values: {
+        components: {
+            myapp: {
+                image: "nginx:latest"
+                replicas: 1
+            }
+        }
+    }
+}
+
+-- expected.yaml --
+# myapp.deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: myapp
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+---
+# myapp.service
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+spec:
+  selector:
+    app: myapp
+  ports:
+    - port: 80
+      targetPort: 80

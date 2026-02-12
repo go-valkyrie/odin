@@ -1,26 +1,4 @@
-/**
- * MIT License
- *
- * Copyright (c) 2025 Stefan Nuxoll
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
+// SPDX-License-Identifier: MIT
 
 package test
 
@@ -34,8 +12,7 @@ import (
 	"strings"
 
 	"github.com/rogpeppe/go-internal/testscript"
-	"go-valkyrie.com/odin/pkg/cmd/template"
-	"go-valkyrie.com/odin/pkg/model"
+	"go-valkyrie.com/odin/pkg/odintest"
 )
 
 func (o *Options) Run(ctx context.Context) error {
@@ -57,7 +34,7 @@ func run(ctx context.Context, opts Options) error {
 	}
 
 	// Setup in-process registry
-	registryHost, modules, cleanup, err := setupRegistry(opts.ModulePaths)
+	registryHost, modules, cleanup, err := odintest.SetupRegistry(opts.ModulePaths)
 	if err != nil {
 		return fmt.Errorf("failed to setup registry: %w", err)
 	}
@@ -80,104 +57,18 @@ func run(ctx context.Context, opts Options) error {
 
 	logger.Info("discovered test files", "count", len(testFiles))
 
-	// Get the odin binary path (for PATH injection)
-	odinBinary, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("failed to get odin binary path: %w", err)
+	// Build params options
+	paramsOpts := []odintest.ParamsOption{
+		odintest.WithFiles(testFiles),
+		odintest.WithUpdateScripts(opts.Update),
+		odintest.WithCmds(map[string]func(ts *testscript.TestScript, neg bool, args []string){
+			"odin-setup": odintest.OdinSetupCmd(registryHost, modules),
+			"template":   odintest.TemplateCmd(ctx, opts.Registries, opts.CacheDir, opts.Logger),
+		}),
 	}
-	odinDir := filepath.Dir(odinBinary)
 
 	// Create testscript params
-	params := testscript.Params{
-		Dir:           "",
-		Files:         testFiles,
-		UpdateScripts: opts.Update,
-		Setup: func(env *testscript.Env) error {
-			// Add odin binary dir to PATH
-			oldPath := env.Getenv("PATH")
-			env.Setenv("PATH", odinDir+string(os.PathListSeparator)+oldPath)
-
-			// Preserve HOME
-			if home := os.Getenv("HOME"); home != "" {
-				env.Setenv("HOME", home)
-			}
-			if userprofile := os.Getenv("USERPROFILE"); userprofile != "" {
-				env.Setenv("USERPROFILE", userprofile)
-			}
-
-			return nil
-		},
-		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"odin-setup": func(ts *testscript.TestScript, neg bool, args []string) {
-				if neg {
-					ts.Fatalf("odin-setup does not support negation")
-				}
-				if len(args) > 0 {
-					ts.Fatalf("odin-setup takes no arguments")
-				}
-
-				// Write odin.toml with registry entries
-				odinToml := createOdinToml(registryHost, modules)
-				ts.Check(os.WriteFile(ts.MkAbs("odin.toml"), []byte(odinToml), 0644))
-			},
-			"template": func(ts *testscript.TestScript, neg bool, args []string) {
-				if neg {
-					ts.Fatalf("template does not support negation")
-				}
-
-				// Parse arguments (bundle path and optional flags)
-				bundlePath := "."
-				var valuesFiles []string
-
-				for i := 0; i < len(args); i++ {
-					arg := args[i]
-					if arg == "-f" || arg == "--values" {
-						if i+1 >= len(args) {
-							ts.Fatalf("flag %s requires an argument", arg)
-						}
-						valuesFiles = append(valuesFiles, ts.MkAbs(args[i+1]))
-						i++
-					} else {
-						bundlePath = arg
-					}
-				}
-
-				// Merge registries: start with global registries (includes hard-coded odin registries)
-				// then overlay with local bundle config registries
-				allRegistries := make(map[string]string)
-				for k, v := range opts.Registries {
-					allRegistries[k] = v
-				}
-
-				bundleConfig, err := model.LoadConfig(".")
-				if err != nil {
-					ts.Fatalf("failed to load config: %v", err)
-				}
-				for k, v := range bundleConfig.Registries {
-					allRegistries[k] = v
-				}
-
-				// Create template options
-				var output strings.Builder
-				templateOpts := template.Options{
-					BundlePath:      ts.MkAbs(bundlePath),
-					CacheDir:        opts.CacheDir,
-					Logger:          opts.Logger,
-					Registries:      allRegistries,
-					ValuesLocations: valuesFiles,
-					Output:          &output,
-				}
-
-				// Run template command
-				if err := templateOpts.Run(ctx); err != nil {
-					ts.Fatalf("template failed: %v", err)
-				}
-
-				// Write output to stdout
-				ts.Stdout().Write([]byte(output.String()))
-			},
-		},
-	}
+	params := odintest.DefaultParams(paramsOpts...)
 
 	// Create a custom test runner
 	runner := &runner{
@@ -252,20 +143,6 @@ func discoverTestFiles(paths []string) ([]string, error) {
 	}
 
 	return files, nil
-}
-
-// createOdinToml generates odin.toml content with registry entries (only for test modules)
-func createOdinToml(registryHost string, modules []moduleInfo) string {
-	var sb strings.Builder
-
-	for _, mod := range modules {
-		sb.WriteString(fmt.Sprintf("[[registries]]\n"))
-		sb.WriteString(fmt.Sprintf("module-prefix = \"%s\"\n", mod.Path))
-		sb.WriteString(fmt.Sprintf("registry = \"%s\"\n", registryHost))
-		sb.WriteString("\n")
-	}
-
-	return sb.String()
 }
 
 // runT implements testscript.T interface

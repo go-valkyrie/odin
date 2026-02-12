@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package test
+package odintest
 
 import (
 	"fmt"
@@ -35,12 +35,14 @@ import (
 	"cuelang.org/go/mod/modregistrytest"
 )
 
-type moduleInfo struct {
-	Path string // e.g. "platform.vituity.com/common"
+// ModuleInfo contains information about a CUE module served by the test registry
+type ModuleInfo struct {
+	Path string // e.g. "platform.example.com/common"
 }
 
-// setupRegistry starts an in-process CUE module registry serving all local modules at v0.0.0-test
-func setupRegistry(modulePaths []string) (host string, modules []moduleInfo, cleanup func(), err error) {
+// SetupRegistry starts an in-process CUE module registry serving all local modules at v0.0.0-test.
+// Returns the registry host, module info, a cleanup function, and an error.
+func SetupRegistry(modulePaths []string) (host string, modules []ModuleInfo, cleanup func(), err error) {
 	if len(modulePaths) == 0 {
 		return "", nil, nil, fmt.Errorf("no module paths provided")
 	}
@@ -54,7 +56,7 @@ func setupRegistry(modulePaths []string) (host string, modules []moduleInfo, cle
 		os.RemoveAll(tempDir)
 	}
 
-	modules = make([]moduleInfo, 0, len(modulePaths))
+	modules = make([]ModuleInfo, 0, len(modulePaths))
 
 	for _, modulePath := range modulePaths {
 		// Read module.cue to get module path
@@ -87,7 +89,7 @@ func setupRegistry(modulePaths []string) (host string, modules []moduleInfo, cle
 			return "", nil, nil, fmt.Errorf("failed to copy module %s: %w", modulePath, err)
 		}
 
-		modules = append(modules, moduleInfo{
+		modules = append(modules, ModuleInfo{
 			Path: mf.Module,
 		})
 	}
@@ -106,6 +108,20 @@ func setupRegistry(modulePaths []string) (host string, modules []moduleInfo, cle
 
 	host = registry.Host()
 	return
+}
+
+// CreateOdinToml generates odin.toml content with registry entries for test modules
+func CreateOdinToml(registryHost string, modules []ModuleInfo) string {
+	var sb strings.Builder
+
+	for _, mod := range modules {
+		sb.WriteString(fmt.Sprintf("[[registries]]\n"))
+		sb.WriteString(fmt.Sprintf("module-prefix = \"%s\"\n", mod.Path))
+		sb.WriteString(fmt.Sprintf("registry = \"%s\"\n", registryHost))
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
 }
 
 // copyDir recursively copies a directory
