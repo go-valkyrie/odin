@@ -1,0 +1,5 @@
+[env]
+CUE_REGISTRY = "file:{{ config_root }}/hack/registryconfig.cue"
+
+[tools]
+go = "1.24"
