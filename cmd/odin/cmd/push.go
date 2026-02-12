@@ -10,8 +10,9 @@ import (
 )
 
 type pushCmd struct {
-	reference  string
-	bundlePath string
+	reference   string
+	bundlePath  string
+	annotations map[string]string
 }
 
 func newPushCmd() *cobra.Command {
@@ -50,14 +51,17 @@ Examples:
 			logger := loggerFromCommand(cmd)
 
 			opts := push.Options{
-				Reference:  p.reference,
-				BundlePath: p.bundlePath,
-				Logger:     logger,
+				Reference:   p.reference,
+				BundlePath:  p.bundlePath,
+				Annotations: p.annotations,
+				Logger:      logger,
 			}
 
 			return push.Run(cmd.Context(), opts)
 		},
 	}
+
+	cmd.Flags().StringToStringVarP(&p.annotations, "annotation", "a", nil, "OCI manifest annotations in key=value format (can be specified multiple times)")
 
 	return cmd
 }

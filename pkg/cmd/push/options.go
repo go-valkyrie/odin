@@ -14,6 +14,9 @@ type Options struct {
 	// BundlePath is the path to the bundle to push
 	BundlePath string
 
+	// Annotations are custom OCI manifest annotations (e.g., org.opencontainers.image.source)
+	Annotations map[string]string
+
 	// Logger for output
 	Logger *slog.Logger
 }

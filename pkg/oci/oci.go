@@ -88,7 +88,7 @@ func newCredentialStore() (*auth.Client, error) {
 }
 
 // Push pushes a bundle to an OCI registry
-func Push(ctx context.Context, ref *Reference, bundlePath string, logger *slog.Logger) error {
+func Push(ctx context.Context, ref *Reference, bundlePath string, annotations map[string]string, logger *slog.Logger) error {
 	logger.Info("pushing bundle", "reference", ref.String(), "path", bundlePath)
 
 	// Create file store from bundle directory
@@ -114,6 +114,9 @@ func Push(ctx context.Context, ref *Reference, bundlePath string, logger *slog.L
 	// Pack into a manifest with the layer
 	packOpts := oras.PackManifestOptions{
 		Layers: []ocispec.Descriptor{layerDesc},
+	}
+	if len(annotations) > 0 {
+		packOpts.ManifestAnnotations = annotations
 	}
 	manifestDesc, err := oras.PackManifest(ctx, fileStore, oras.PackManifestVersion1_1, "application/vnd.odin.bundle.v1", packOpts)
 	if err != nil {

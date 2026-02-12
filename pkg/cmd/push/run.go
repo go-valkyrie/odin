@@ -18,7 +18,7 @@ func Run(ctx context.Context, opts Options) error {
 	}
 
 	// Push bundle
-	if err := oci.Push(ctx, ref, opts.BundlePath, opts.Logger); err != nil {
+	if err := oci.Push(ctx, ref, opts.BundlePath, opts.Annotations, opts.Logger); err != nil {
 		return fmt.Errorf("failed to push bundle: %w", err)
 	}
 
