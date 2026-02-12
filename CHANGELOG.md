@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/go-valkyrie/odin/compare/v0.4.1...v0.4.2) (2026-02-12)
+
+
+### Features
+
+* **push:** add --annotation flag for OCI manifest annotations ([450419f](https://github.com/go-valkyrie/odin/commit/450419f6d7d3b0e0a4a61f226ea6534cc206738c))
+
 ## [0.4.1](https://github.com/go-valkyrie/odin/compare/v0.4.0...v0.4.1) (2026-02-07)
 
 
