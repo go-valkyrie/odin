@@ -87,7 +87,13 @@ An Odin bundle is a CUE module containing:
 
 ### Commit Requirements
 
-**IMPORTANT**: Always present commit messages to the user for review before creating commits. Never commit without explicit user confirmation.
+**CRITICAL**: Always present commit messages to the user for review and wait for explicit approval before creating commits. Even if the user says "commit this", you MUST:
+1. Draft the commit message
+2. Present it to the user for review
+3. Wait for explicit approval (e.g., "yes", "approved", "looks good")
+4. Only then create the commit
+
+Never commit without this explicit approval of the actual commit message content.
 
 All commits must:
 1. Use [Conventional Commits](https://www.conventionalcommits.org/) format: `<type>[optional scope]: <description>`
@@ -96,13 +102,35 @@ All commits must:
 
 Valid commit types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
 
-Example commit message:
-```
-feat(template): add support for custom resource filtering
+**Commit Message Style**:
+- Focus on **what changed and why**, not implementation details (the "how")
+- Keep messages concise - avoid listing which files were modified or internal function calls
+- The code diff shows the "how" - the message should explain the "what" and "why"
 
-Adds filtering logic to exclude resources based on labels.
+Good example (concise, focuses on what/why):
+```
+feat(push): add --annotation flag for OCI manifest annotations
+
+Allows setting custom OCI manifest annotations when pushing bundles
+(e.g., org.opencontainers.image.source, org.opencontainers.image.description).
+
+Example:
+  odin push --annotation org.opencontainers.image.source=https://... \
+            ghcr.io/org/app:v1
 
 Co-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>
+```
+
+Bad example (too verbose, includes implementation details):
+```
+feat(push): add --annotation flag for OCI manifest annotations
+
+Changes:
+- Add --annotation/-a flag to push command
+- Thread annotations through Options to oci.Push()
+- Apply annotations to OCI manifest via ORAS PackManifestOptions
+- Update pkg/cmd/push/options.go to add Annotations field
+...
 ```
 
 Note: The `Signed-off-by` line will be automatically added by `git commit -s`.
