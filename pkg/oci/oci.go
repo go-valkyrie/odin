@@ -6,6 +6,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -75,11 +78,42 @@ func (r *Reference) LastComponent() string {
 	return parts[len(parts)-1]
 }
 
-// newCredentialStore creates a new credentials store for OCI auth
-func newCredentialStore() (*auth.Client, error) {
-	store, err := credentials.NewStore("", credentials.StoreOptions{})
+// podmanAuthPath resolves the Podman auth file path
+func podmanAuthPath() string {
+	if p := os.Getenv("REGISTRY_AUTH_FILE"); p != "" {
+		return p
+	}
+	if runtime.GOOS == "linux" {
+		if xdg := os.Getenv("XDG_RUNTIME_DIR"); xdg != "" {
+			return filepath.Join(xdg, "containers", "auth.json")
+		}
+	}
+	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create credential store: %w", err)
+		return ""
+	}
+	return filepath.Join(home, ".config", "containers", "auth.json")
+}
+
+// newCredentialStore creates a new credentials store for OCI auth
+// Primary: Docker config ($DOCKER_CONFIG/config.json or ~/.docker/config.json)
+// Respects credsStore, credHelpers, and auths entries
+// Fallback: Podman auth file ($REGISTRY_AUTH_FILE or $XDG_RUNTIME_DIR/containers/auth.json)
+func newCredentialStore() (*auth.Client, error) {
+	dockerStore, err := credentials.NewStoreFromDocker(credentials.StoreOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker credential store: %w", err)
+	}
+
+	// Fallback: Podman auth file
+	// Podman uses $XDG_RUNTIME_DIR/containers/auth.json (Linux)
+	// or ~/.config/containers/auth.json (macOS/Windows)
+	store := credentials.Store(dockerStore)
+	if podmanPath := podmanAuthPath(); podmanPath != "" {
+		podmanStore, err := credentials.NewStore(podmanPath, credentials.StoreOptions{})
+		if err == nil {
+			store = credentials.NewStoreWithFallbacks(dockerStore, podmanStore)
+		}
 	}
 
 	return &auth.Client{
