@@ -3,9 +3,11 @@
 package model
 
 import (
-	"cuelang.org/go/cue"
-	"cuelang.org/go/encoding/yaml"
+	"bytes"
 	"fmt"
+
+	"cuelang.org/go/cue"
+	"gopkg.in/yaml.v3"
 )
 
 type Resource struct {
@@ -23,7 +25,23 @@ func (r *Resource) Format(f fmt.State, c rune) {
 }
 
 func (r *Resource) ToYAML() ([]byte, error) {
-	return yaml.Encode(r.value)
+	var resourceMap map[string]interface{}
+	if err := r.value.Decode(&resourceMap); err != nil {
+		return nil, err
+	}
+
+	// Encode with 2-space indentation
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(2)
+	if err := encoder.Encode(resourceMap); err != nil {
+		return nil, err
+	}
+	if err := encoder.Close(); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func (r *Resource) Name() string {

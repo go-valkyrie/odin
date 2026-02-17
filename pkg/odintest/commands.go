@@ -41,6 +41,7 @@ func TemplateCmd(ctx context.Context, globalRegistries map[string]string, cacheD
 		// Parse arguments (bundle path and optional flags)
 		bundlePath := "."
 		var valuesFiles []string
+		var namespace string
 
 		for i := 0; i < len(args); i++ {
 			arg := args[i]
@@ -49,6 +50,12 @@ func TemplateCmd(ctx context.Context, globalRegistries map[string]string, cacheD
 					ts.Fatalf("flag %s requires an argument", arg)
 				}
 				valuesFiles = append(valuesFiles, ts.MkAbs(args[i+1]))
+				i++
+			} else if arg == "--namespace" || arg == "-n" {
+				if i+1 >= len(args) {
+					ts.Fatalf("flag %s requires an argument", arg)
+				}
+				namespace = args[i+1]
 				i++
 			} else {
 				bundlePath = arg
@@ -81,6 +88,7 @@ func TemplateCmd(ctx context.Context, globalRegistries map[string]string, cacheD
 			Logger:          logger,
 			Registries:      allRegistries,
 			ValuesLocations: valuesFiles,
+			Namespace:       namespace,
 			Output:          &output,
 		}
 

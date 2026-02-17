@@ -71,8 +71,8 @@ spec:
         app: backend
     spec:
       containers:
-        - name: backend
-          image: backend:latest
+        - image: backend:latest
+          name: backend
           ports:
             - containerPort: 8080
 ---
@@ -82,11 +82,11 @@ kind: Service
 metadata:
   name: backend
 spec:
-  selector:
-    app: backend
   ports:
     - port: 8080
       targetPort: 8080
+  selector:
+    app: backend
 ---
 # frontend.deployment
 apiVersion: apps/v1
@@ -104,8 +104,8 @@ spec:
         app: frontend
     spec:
       containers:
-        - name: frontend
-          image: frontend:latest
+        - image: frontend:latest
+          name: frontend
           ports:
             - containerPort: 80
 ---
@@ -115,8 +115,8 @@ kind: Service
 metadata:
   name: frontend
 spec:
-  selector:
-    app: frontend
   ports:
     - port: 80
       targetPort: 80
+  selector:
+    app: frontend

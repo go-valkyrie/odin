@@ -54,6 +54,7 @@ type Option func(bundle *bundleLoader) error
 type bundleLoader struct {
 	ctx          *cue.Context
 	env          []string
+	namespace    string
 	logger       *slog.Logger
 	source       modelSource
 	valuesSource modelSource
@@ -94,6 +95,13 @@ func WithCacheDir(cacheDir string) Option {
 func WithLogger(logger *slog.Logger) Option {
 	return func(l *bundleLoader) error {
 		l.logger = logger
+		return nil
+	}
+}
+
+func WithNamespace(namespace string) Option {
+	return func(l *bundleLoader) error {
+		l.namespace = namespace
 		return nil
 	}
 }
@@ -156,8 +164,14 @@ func (l *bundleLoader) Load() (*Bundle, error) {
 
 	logger.Debug("loading bundle", "source", l.source.String())
 
+	var tags []string
+	if l.namespace != "" {
+		tags = []string{"namespace=" + l.namespace}
+	}
+
 	if value, err := l.source.Load(b.ctx, &sourceLoadOptions{
-		Env: b.env,
+		Env:  b.env,
+		Tags: tags,
 	}); err != nil {
 		return nil, err
 	} else {

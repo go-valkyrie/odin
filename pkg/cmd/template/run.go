@@ -43,6 +43,10 @@ func run(ctx context.Context, opts Options) error {
 		model.WithCacheDir(opts.CacheDir),
 	}
 
+	if opts.Namespace != "" {
+		modelOpts = append(modelOpts, model.WithNamespace(opts.Namespace))
+	}
+
 	if len(opts.ValuesLocations) > 0 {
 		modelOpts = append(modelOpts, model.WithValues(opts.ValuesLocations))
 	}
@@ -74,15 +78,18 @@ func run(ctx context.Context, opts Options) error {
 		if i > 0 {
 			fmt.Fprintf(w, "---\n")
 		}
+
 		if err := resource.Value().Validate(cue.Concrete(true)); err != nil {
 			return err
 		}
-		if data, err := resource.ToYAML(); err != nil {
+
+		data, err := resource.ToYAML()
+		if err != nil {
 			return err
-		} else {
-			fmt.Fprintf(w, "# %v.%v\n", resource.Owner().Selector(), resource.Selector())
-			fmt.Fprint(w, string(data))
 		}
+
+		fmt.Fprintf(w, "# %v.%v\n", resource.Owner().Selector(), resource.Selector())
+		fmt.Fprint(w, string(data))
 	}
 
 	return nil

@@ -17,6 +17,7 @@ type instanceConfiguration func(inst *build.Instance) error
 
 type sourceLoadOptions struct {
 	Env                   []string
+	Tags                  []string
 	InstanceConfiguration instanceConfiguration
 }
 
@@ -50,6 +51,7 @@ func (s localSource) Load(ctx *cue.Context, opts *sourceLoadOptions) (cue.Value,
 		Dir:       string(s),
 		DataFiles: true,
 		Env:       opts.Env,
+		Tags:      opts.Tags,
 	})[0]
 
 	if configure := opts.InstanceConfiguration; configure != nil {

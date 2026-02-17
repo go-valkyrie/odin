@@ -22,7 +22,7 @@ fi
 
 stat "$values_file" > /dev/null
 
-odin template -f "$values_file"
+odin template -f "$values_file" --namespace "$ARGOCD_APP_NAMESPACE"
 
 if $cleanup_values; then
   rm "$values_file"

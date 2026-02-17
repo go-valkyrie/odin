@@ -16,6 +16,7 @@ type Options struct {
 	ValuesPath      string
 	ValuesFormat    string
 	Output          io.Writer
+	Namespace       string
 }
 
 func DefaultOptions() *Options {

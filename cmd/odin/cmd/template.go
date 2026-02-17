@@ -17,6 +17,7 @@ type templateCmd struct {
 	cacheDir    string
 	bundlePath  string
 	valuesFiles []string
+	namespace   string
 }
 
 func (c *templateCmd) Args(cmd *cobra.Command, args []string) error {
@@ -59,6 +60,7 @@ func (c *templateCmd) RunE(cmd *cobra.Command, args []string) error {
 		CacheDir:        c.cacheDir,
 		Logger:          c.logger.With("component", "template"),
 		ValuesLocations: c.valuesFiles,
+		Namespace:       c.namespace,
 	}
 	// Load global registries first
 	globalRegistries, err := c.config.ModuleRegistries()
@@ -80,6 +82,7 @@ func newTemplateCmd() *cobra.Command {
 		RunE:    c.RunE,
 	}
 	cmd.Flags().StringArrayVarP(&c.valuesFiles, "values", "f", []string{}, "Values files")
+	cmd.Flags().StringVar(&c.namespace, "namespace", "", "Namespace to use for @tag(namespace) in CUE")
 
 	return cmd
 }

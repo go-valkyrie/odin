@@ -75,8 +75,8 @@ spec:
         app: api
     spec:
       containers:
-        - name: api
-          image: api:prod
+        - image: api:prod
+          name: api
           ports:
             - containerPort: 80
 ---
@@ -86,8 +86,8 @@ kind: Service
 metadata:
   name: api
 spec:
-  selector:
-    app: api
   ports:
     - port: 80
       targetPort: 80
+  selector:
+    app: api
