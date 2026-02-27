@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.4](https://github.com/go-valkyrie/odin/compare/v0.4.3...v0.4.4) (2026-02-27)
+
+
+### Features
+
+* **template:** add --namespace flag to set namespace via CUE tag ([b0ca6ad](https://github.com/go-valkyrie/odin/commit/b0ca6ad80960db9c32fce568e5b97b4291a8ef06))
+
 ## [0.4.3](https://github.com/go-valkyrie/odin/compare/v0.4.2...v0.4.3) (2026-02-12)
 
 
