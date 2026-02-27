@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.5](https://github.com/go-valkyrie/odin/compare/v0.4.4...v0.4.5) (2026-02-27)
+
+
+### Bug Fixes
+
+* **argocd:** remove odin template call from init.sh ([79f3c30](https://github.com/go-valkyrie/odin/commit/79f3c30b54b59c41b813cc1769570236abb74257))
+
 ## [0.4.4](https://github.com/go-valkyrie/odin/compare/v0.4.3...v0.4.4) (2026-02-27)
 
 
