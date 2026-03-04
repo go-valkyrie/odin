@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.6](https://github.com/go-valkyrie/odin/compare/v0.4.5...v0.4.6) (2026-03-04)
+
+
+### Features
+
+* --namespace no longer fails on bundles that don't use it ([8e29387](https://github.com/go-valkyrie/odin/commit/8e29387f234e187c0dc2217501d25030c81ab04a))
+
 ## [0.4.5](https://github.com/go-valkyrie/odin/compare/v0.4.4...v0.4.5) (2026-02-27)
 
 
