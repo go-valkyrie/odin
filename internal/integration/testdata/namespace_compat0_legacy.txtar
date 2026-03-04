@@ -1,4 +1,4 @@
-# Test --namespace flag exposes namespace as a CUE tag var for explicit use in bundles (compat 1)
+# Test that compat 0 (legacy) bundles using @tag(namespace) still work with --namespace.
 
 odin-setup
 exec odin cue mod tidy
@@ -6,10 +6,10 @@ exec odin template --namespace my-namespace
 cmp stdout expected.yaml
 
 -- odin.toml --
-compat = 1
+compat = 0
 
 -- cue.mod/module.cue --
-module: "test.example.com/namespace-tag@v0"
+module: "test.example.com/namespace-compat0-legacy@v0"
 language: version: "v0.14.0"
 deps: {
     "go-valkyrie.com/odin/api@v0": {
@@ -23,7 +23,7 @@ package bundle
 import odin "go-valkyrie.com/odin/api/v1alpha1"
 
 odin.#Bundle & {
-    metadata: name: "namespace-tag"
+    metadata: name: "namespace-compat0-legacy"
 
     components: {
         myapp: odin.#Component & {
@@ -35,7 +35,7 @@ odin.#Bundle & {
                     kind:       "ConfigMap"
                     metadata: {
                         name:      "myapp"
-                        namespace: string @tag(namespace, var=namespace)
+                        namespace: string @tag(namespace)
                     }
                     data: key: "value"
                 }

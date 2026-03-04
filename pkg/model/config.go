@@ -10,8 +10,20 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+// Config holds the parsed odin.toml configuration.
+//
+// Compat controls tag-injection behavior:
+//
+//   - 0 (legacy): uses load.Config.Tags — all tags in Tags must be consumed by
+//     @tag(...) attributes or CUE evaluation fails.
+//   - 1: uses load.Config.TagVars — unreferenced vars are silently ignored,
+//     but @tag attributes must use the var=<name> form, e.g.
+//     @tag(namespace, var=namespace).
+//
+// See docs/COMPAT.md for migration guidance.
 type Config struct {
 	Registries map[string]string
+	Compat     int
 }
 
 type registryEntry struct {
@@ -21,6 +33,7 @@ type registryEntry struct {
 
 type tomlRoot struct {
 	Registries []registryEntry `toml:"registries"`
+	Compat     int             `toml:"compat"`
 }
 
 // LoadConfig reads odin.toml (preferred) or legacy odin.registries.toml from bundlePath.
@@ -57,5 +70,6 @@ func decodeTomlRegistries(path string, cfg *Config) error {
 		}
 		cfg.Registries[r.ModulePrefix] = r.Registry
 	}
+	cfg.Compat = root.Compat
 	return nil
 }

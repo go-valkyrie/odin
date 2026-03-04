@@ -16,7 +16,8 @@ import (
 	"cuelang.org/go/encoding/yaml"
 	"go-valkyrie.com/odin/internal/schema"
 	"go-valkyrie.com/odin/internal/utils"
-	msource "go-valkyrie.com/odin/pkg/model/internal/source"
+	"go-valkyrie.com/odin/pkg/model/internal/compat"
+	"go-valkyrie.com/odin/pkg/model/internal/source"
 	pkgschema "go-valkyrie.com/odin/pkg/schema"
 )
 
@@ -57,8 +58,8 @@ type bundleLoader struct {
 	env          []string
 	namespace    string
 	logger       *slog.Logger
-	source       msource.Source
-	valuesSource msource.Source
+	source       source.Source
+	valuesSource source.Source
 	registries   map[string]string
 	cacheDir     string
 }
@@ -109,10 +110,10 @@ func WithNamespace(namespace string) Option {
 
 func WithValues(locations []string) Option {
 	return func(l *bundleLoader) error {
-		if source, err := msource.NewValues(locations); err != nil {
+		if vs, err := source.NewValues(locations); err != nil {
 			return err
 		} else {
-			l.valuesSource = source
+			l.valuesSource = vs
 			return nil
 		}
 	}
@@ -164,15 +165,17 @@ func (l *bundleLoader) Load() (*Bundle, error) {
 
 	logger.Debug("loading bundle", "source", l.source.String())
 
-	var tags []string
-	if l.namespace != "" {
-		tags = []string{"namespace=" + l.namespace}
+	policy, err := compat.NewPolicy(cfg.Compat)
+	if err != nil {
+		return nil, err
 	}
 
-	if value, err := l.source.Load(b.ctx, &msource.LoadOptions{
-		Env:  b.env,
-		Tags: tags,
-	}); err != nil {
+	loadOpts := policy.BuildLoadOptions(compat.LoadInput{
+		Env:       b.env,
+		Namespace: l.namespace,
+	})
+
+	if value, err := l.source.Load(b.ctx, loadOpts); err != nil {
 		return nil, err
 	} else {
 		b.value = value
@@ -207,10 +210,10 @@ func LoadBundle(bundlePath string, options ...Option) (*Bundle, error) {
 	}
 
 	// Create source with logger
-	if source, err := msource.New(bundlePath, l.logger); err != nil {
+	if src, err := source.New(bundlePath, l.logger); err != nil {
 		return nil, err
 	} else {
-		l.source = source
+		l.source = src
 	}
 
 	return l.Load()
@@ -243,8 +246,8 @@ func (b *Bundle) GoString() string {
 	return fmt.Sprintf("#Bundle & %v", b.value)
 }
 
-func (b *Bundle) LoadValues(source msource.Source) (*Bundle, error) {
-	values, err := source.Load(b.ctx, &msource.LoadOptions{
+func (b *Bundle) LoadValues(src source.Source) (*Bundle, error) {
+	values, err := src.Load(b.ctx, &source.LoadOptions{
 		Env:                   b.env,
 		InstanceConfiguration: configureValuesInstance,
 	})

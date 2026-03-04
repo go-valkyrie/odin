@@ -110,12 +110,19 @@ func SetupRegistry(modulePaths []string) (host string, modules []ModuleInfo, cle
 	return
 }
 
-// CreateOdinToml generates odin.toml content with registry entries for test modules
-func CreateOdinToml(registryHost string, modules []ModuleInfo) string {
+// CreateOdinToml generates odin.toml content with registry entries for test modules.
+// An optional compat level may be provided; when absent it defaults to 0 (legacy).
+func CreateOdinToml(registryHost string, modules []ModuleInfo, compat ...int) string {
 	var sb strings.Builder
 
+	compatLevel := 0
+	if len(compat) > 0 {
+		compatLevel = compat[0]
+	}
+	sb.WriteString(fmt.Sprintf("compat = %d\n\n", compatLevel))
+
 	for _, mod := range modules {
-		sb.WriteString(fmt.Sprintf("[[registries]]\n"))
+		sb.WriteString("[[registries]]\n")
 		sb.WriteString(fmt.Sprintf("module-prefix = \"%s\"\n", mod.Path))
 		sb.WriteString(fmt.Sprintf("registry = \"%s\"\n", registryHost))
 		sb.WriteString("\n")

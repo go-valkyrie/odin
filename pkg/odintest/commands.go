@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pelletier/go-toml/v2"
 	"github.com/rogpeppe/go-internal/testscript"
 	"go-valkyrie.com/odin/pkg/cmd/template"
 	"go-valkyrie.com/odin/pkg/model"
@@ -24,8 +25,19 @@ func OdinSetupCmd(registryHost string, modules []ModuleInfo) func(ts *testscript
 			ts.Fatalf("odin-setup takes no arguments")
 		}
 
-		// Write odin.toml with registry entries
-		odinToml := CreateOdinToml(registryHost, modules)
+		// Read existing compat level from odin.toml if it exists, so we don't lose it.
+		existingCompat := 0
+		if data, err := os.ReadFile(ts.MkAbs("odin.toml")); err == nil {
+			var existing struct {
+				Compat int `toml:"compat"`
+			}
+			if err := toml.Unmarshal(data, &existing); err == nil {
+				existingCompat = existing.Compat
+			}
+		}
+
+		// Write odin.toml with registry entries, preserving compat level.
+		odinToml := CreateOdinToml(registryHost, modules, existingCompat)
 		ts.Check(os.WriteFile(ts.MkAbs("odin.toml"), []byte(odinToml), 0644))
 	}
 }

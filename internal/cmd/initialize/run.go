@@ -207,6 +207,11 @@ func run(ctx context.Context, o *Options) error {
 		}
 	}
 
+	odinToml := fmt.Sprintf("compat = %d\n", o.Compat)
+	if err := os.WriteFile(filepath.Join(bundlePath, "odin.toml"), []byte(odinToml), 0644); err != nil {
+		return err
+	}
+
 	c := exec.Command(os.Args[0], "cue", "mod", "tidy")
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr

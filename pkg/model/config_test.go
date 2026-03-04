@@ -14,6 +14,7 @@ func TestLoadConfig(t *testing.T) {
 		setupFunc     func(t *testing.T) string // Returns temp dir path
 		wantErr       bool
 		wantRegisties map[string]string
+		wantCompat    int
 	}{
 		{
 			name: "valid odin.toml",
@@ -122,6 +123,52 @@ registry = "registry.test.com"
 				"test.com/module": "registry.test.com",
 			},
 		},
+		{
+			name: "compat = 1 parses correctly",
+			setupFunc: func(t *testing.T) string {
+				dir := t.TempDir()
+				content := `compat = 1
+`
+				if err := os.WriteFile(filepath.Join(dir, "odin.toml"), []byte(content), 0644); err != nil {
+					t.Fatalf("failed to write test file: %v", err)
+				}
+				return dir
+			},
+			wantRegisties: map[string]string{},
+			wantCompat:    1,
+		},
+		{
+			name: "missing compat defaults to 0",
+			setupFunc: func(t *testing.T) string {
+				dir := t.TempDir()
+				content := `[[registries]]
+module-prefix = "example.com/module"
+registry = "registry.example.com"
+`
+				if err := os.WriteFile(filepath.Join(dir, "odin.toml"), []byte(content), 0644); err != nil {
+					t.Fatalf("failed to write test file: %v", err)
+				}
+				return dir
+			},
+			wantRegisties: map[string]string{
+				"example.com/module": "registry.example.com",
+			},
+			wantCompat: 0,
+		},
+		{
+			name: "compat = 0 explicitly set",
+			setupFunc: func(t *testing.T) string {
+				dir := t.TempDir()
+				content := `compat = 0
+`
+				if err := os.WriteFile(filepath.Join(dir, "odin.toml"), []byte(content), 0644); err != nil {
+					t.Fatalf("failed to write test file: %v", err)
+				}
+				return dir
+			},
+			wantRegisties: map[string]string{},
+			wantCompat:    0,
+		},
 	}
 
 	for _, tt := range tests {
@@ -141,6 +188,9 @@ registry = "registry.test.com"
 				if got := cfg.Registries[k]; got != v {
 					t.Errorf("Registries[%q] = %q, want %q", k, got, v)
 				}
+			}
+			if cfg.Compat != tt.wantCompat {
+				t.Errorf("Compat = %d, want %d", cfg.Compat, tt.wantCompat)
 			}
 		})
 	}

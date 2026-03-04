@@ -1,4 +1,5 @@
-# Test --namespace flag exposes namespace as a CUE tag var for explicit use in bundles (compat 1)
+# Test that passing --namespace to a compat 1 bundle that does NOT use @tag(namespace, var=namespace)
+# succeeds without error — TagVars silently ignores unreferenced vars.
 
 odin-setup
 exec odin cue mod tidy
@@ -9,7 +10,7 @@ cmp stdout expected.yaml
 compat = 1
 
 -- cue.mod/module.cue --
-module: "test.example.com/namespace-tag@v0"
+module: "test.example.com/namespace-compat1-no-tag@v0"
 language: version: "v0.14.0"
 deps: {
     "go-valkyrie.com/odin/api@v0": {
@@ -23,7 +24,7 @@ package bundle
 import odin "go-valkyrie.com/odin/api/v1alpha1"
 
 odin.#Bundle & {
-    metadata: name: "namespace-tag"
+    metadata: name: "namespace-compat1-no-tag"
 
     components: {
         myapp: odin.#Component & {
@@ -33,10 +34,7 @@ odin.#Bundle & {
                 configmap: {
                     apiVersion: "v1"
                     kind:       "ConfigMap"
-                    metadata: {
-                        name:      "myapp"
-                        namespace: string @tag(namespace, var=namespace)
-                    }
+                    metadata: name: "myapp"
                     data: key: "value"
                 }
             }
@@ -54,4 +52,3 @@ data:
 kind: ConfigMap
 metadata:
   name: myapp
-  namespace: my-namespace

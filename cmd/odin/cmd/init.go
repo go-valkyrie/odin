@@ -59,5 +59,6 @@ func newInitCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolVarP(&c.opts.Prompt, "prompt", "p", true, "use interactive prompts to configure values")
 	cmd.Flags().StringVarP(&c.opts.ModulePath, "module", "m", "", "specify name of generated cue module (infers from git remote by default)")
+	cmd.Flags().IntVar(&c.opts.Compat, "compat", 1, "compat level to write into odin.toml (0=legacy Tags, 1=TagVars)")
 	return cmd
 }

@@ -18,6 +18,7 @@ type InstanceConfiguration func(inst *build.Instance) error
 type LoadOptions struct {
 	Env                   []string
 	Tags                  []string
+	TagVars               map[string]load.TagVar
 	InstanceConfiguration InstanceConfiguration
 }
 
@@ -55,6 +56,7 @@ func (s local) Load(ctx *cue.Context, opts *LoadOptions) (cue.Value, error) {
 		DataFiles: true,
 		Env:       opts.Env,
 		Tags:      opts.Tags,
+		TagVars:   opts.TagVars,
 	})[0]
 
 	if configure := opts.InstanceConfiguration; configure != nil {

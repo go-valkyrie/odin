@@ -13,6 +13,7 @@ type Options struct {
 	ModulePath string
 	Logger     *slog.Logger
 	Prompt     bool
+	Compat     int
 }
 
 func NewOptions() *Options {
