@@ -102,23 +102,27 @@ All commits must:
 
 Valid commit types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
 
-**Commit Message Style**:
-- Focus on **what changed and why**, not implementation details (the "how")
-- Keep messages concise - avoid listing which files were modified or internal function calls
-- The code diff shows the "how" - the message should explain the "what" and "why"
+**Scopes** are optional. Use one only when the change is clearly localized to a named, stable thing:
+- A CLI subcommand: `push`, `pull`, `template`, `init`, `show`
+- A specific integration: `argocd`
+- A well-known file: `claude` for changes to CLAUDE.md
 
-Good example (concise, focuses on what/why):
+Don't use scopes for internal packages, feature concepts, or anything that just restates the description.
+
+**Commit Message Style**:
+- Write for an audience reading release notes, not the code diff
+- Describe **what** changed and **why** (when non-obvious) — not how it was implemented
+- Avoid internal details: no file names, function names, package paths, or flag wiring
+- Keep body concise; omit it entirely for straightforward changes
+
+Good example (reads like a release note):
 ```
 feat(push): add --annotation flag for OCI manifest annotations
 
 Allows setting custom OCI manifest annotations when pushing bundles
 (e.g., org.opencontainers.image.source, org.opencontainers.image.description).
 
-Example:
-  odin push --annotation org.opencontainers.image.source=https://... \
-            ghcr.io/org/app:v1
-
-Co-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>
+Co-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
 Bad example (too verbose, includes implementation details):
