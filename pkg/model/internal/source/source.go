@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package model
+package source
 
 import (
 	"fmt"
@@ -13,36 +13,39 @@ import (
 	"cuelang.org/go/cue/load"
 )
 
-type instanceConfiguration func(inst *build.Instance) error
+type InstanceConfiguration func(inst *build.Instance) error
 
-type sourceLoadOptions struct {
+type LoadOptions struct {
 	Env                   []string
 	Tags                  []string
-	InstanceConfiguration instanceConfiguration
+	InstanceConfiguration InstanceConfiguration
 }
 
-type modelSource interface {
-	Load(ctx *cue.Context, opts *sourceLoadOptions) (cue.Value, error)
+// Source is a source of CUE values for a bundle or values overlay.
+type Source interface {
+	Load(ctx *cue.Context, opts *LoadOptions) (cue.Value, error)
 	fmt.Stringer
 }
 
-func newSource(location string, logger *slog.Logger) (modelSource, error) {
+// New returns a Source for the given location. OCI URIs (oci://) return an
+// ociSource; everything else is treated as a local filesystem path.
+func New(location string, logger *slog.Logger) (Source, error) {
 	if strings.HasPrefix(location, "oci://") {
 		if logger == nil {
 			logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 		}
-		return newOCISource(location, logger)
+		return newOCI(location, logger)
 	}
-	return localSource(location), nil
+	return local(location), nil
 }
 
-type localSource string
+type local string
 
-func (s localSource) String() string {
+func (s local) String() string {
 	return string(s)
 }
 
-func (s localSource) Load(ctx *cue.Context, opts *sourceLoadOptions) (cue.Value, error) {
+func (s local) Load(ctx *cue.Context, opts *LoadOptions) (cue.Value, error) {
 	if _, err := os.Stat(string(s)); err != nil {
 		return cue.Value{}, err
 	}

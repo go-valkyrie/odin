@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-package model
+package source
 
 import (
 	"fmt"
@@ -23,16 +23,16 @@ type valuesFile struct {
 func (f *valuesFile) String() string {
 	if f.format == "" {
 		return f.path
-	} else {
-		return fmt.Sprintf("%s: %s", f.format, f.path)
 	}
+	return fmt.Sprintf("%s: %s", f.format, f.path)
 }
 
-type valuesSource struct {
+// Values is a source for values overlays loaded from one or more files.
+type Values struct {
 	locations []valuesFile
 }
 
-func newValuesSource(locations []string) (*valuesSource, error) {
+func NewValues(locations []string) (*Values, error) {
 	files := make([]valuesFile, 0, len(locations))
 	for _, location := range locations {
 		if match := _valuesFilePattern.Match(location); match != nil {
@@ -40,35 +40,29 @@ func newValuesSource(locations []string) (*valuesSource, error) {
 				format: match.Named("Format"),
 				path:   match.Named("Path"),
 			}
-
 			if _, err := os.Stat(file.path); err != nil {
 				return nil, err
 			}
-
 			files = append(files, file)
 		}
 	}
-
-	return &valuesSource{locations: files}, nil
+	return &Values{locations: files}, nil
 }
 
-func (s *valuesSource) String() string {
+func (s *Values) String() string {
 	sb := strings.Builder{}
 	count := len(s.locations)
-
 	for i, file := range s.locations {
 		sb.WriteString(file.String())
 		if i < count-1 {
 			sb.WriteString("; ")
 		}
 	}
-
 	return sb.String()
 }
 
-func (s *valuesSource) Load(ctx *cue.Context, opts *sourceLoadOptions) (cue.Value, error) {
+func (s *Values) Load(ctx *cue.Context, opts *LoadOptions) (cue.Value, error) {
 	args := make([]string, 0, len(s.locations)*2)
-
 	for _, file := range s.locations {
 		if file.format != "" {
 			args = append(args, fmt.Sprintf("%s:", file.format), file.path)

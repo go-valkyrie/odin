@@ -16,6 +16,7 @@ import (
 	"cuelang.org/go/encoding/yaml"
 	"go-valkyrie.com/odin/internal/schema"
 	"go-valkyrie.com/odin/internal/utils"
+	msource "go-valkyrie.com/odin/pkg/model/internal/source"
 	pkgschema "go-valkyrie.com/odin/pkg/schema"
 )
 
@@ -56,8 +57,8 @@ type bundleLoader struct {
 	env          []string
 	namespace    string
 	logger       *slog.Logger
-	source       modelSource
-	valuesSource modelSource
+	source       msource.Source
+	valuesSource msource.Source
 	registries   map[string]string
 	cacheDir     string
 }
@@ -108,11 +109,10 @@ func WithNamespace(namespace string) Option {
 
 func WithValues(locations []string) Option {
 	return func(l *bundleLoader) error {
-		if source, err := newValuesSource(locations); err != nil {
+		if source, err := msource.NewValues(locations); err != nil {
 			return err
 		} else {
 			l.valuesSource = source
-
 			return nil
 		}
 	}
@@ -169,7 +169,7 @@ func (l *bundleLoader) Load() (*Bundle, error) {
 		tags = []string{"namespace=" + l.namespace}
 	}
 
-	if value, err := l.source.Load(b.ctx, &sourceLoadOptions{
+	if value, err := l.source.Load(b.ctx, &msource.LoadOptions{
 		Env:  b.env,
 		Tags: tags,
 	}); err != nil {
@@ -207,7 +207,7 @@ func LoadBundle(bundlePath string, options ...Option) (*Bundle, error) {
 	}
 
 	// Create source with logger
-	if source, err := newSource(bundlePath, l.logger); err != nil {
+	if source, err := msource.New(bundlePath, l.logger); err != nil {
 		return nil, err
 	} else {
 		l.source = source
@@ -243,8 +243,8 @@ func (b *Bundle) GoString() string {
 	return fmt.Sprintf("#Bundle & %v", b.value)
 }
 
-func (b *Bundle) LoadValues(source modelSource) (*Bundle, error) {
-	values, err := source.Load(b.ctx, &sourceLoadOptions{
+func (b *Bundle) LoadValues(source msource.Source) (*Bundle, error) {
+	values, err := source.Load(b.ctx, &msource.LoadOptions{
 		Env:                   b.env,
 		InstanceConfiguration: configureValuesInstance,
 	})
