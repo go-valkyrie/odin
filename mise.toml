@@ -2,4 +2,4 @@
 CUE_REGISTRY = "file:{{ config_root }}/hack/registryconfig.cue"
 
 [tools]
-go = "1.24"
+go = "1.25"
