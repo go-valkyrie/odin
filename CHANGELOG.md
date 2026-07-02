@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.7](https://github.com/go-valkyrie/odin/compare/v0.4.6...v0.4.7) (2026-07-02)
+
+
+### Bug Fixes
+
+* update CUE to v0.17.0 ([7f3214a](https://github.com/go-valkyrie/odin/commit/7f3214aca440e27ab9c6d3a25c0de972a87f49f0))
+
 ## [0.4.6](https://github.com/go-valkyrie/odin/compare/v0.4.5...v0.4.6) (2026-03-04)
 
 
