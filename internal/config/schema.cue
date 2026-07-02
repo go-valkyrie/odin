@@ -43,7 +43,7 @@ import (
 }
 
 #registries: {
-	[#modulePath]: #registryHost
+	[#modulePath]: string
 }
 
 #cue: {
