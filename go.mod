@@ -3,7 +3,7 @@ module go-valkyrie.com/odin
 go 1.25.0
 
 require (
-	cuelang.org/go v0.17.0
+	cuelang.org/go v0.17.1
 	github.com/chainguard-dev/git-urls v1.0.2
 	github.com/dpotapov/slogpfx v0.0.0-20230917063348-41a73c95c536
 	github.com/fatih/color v1.18.0
