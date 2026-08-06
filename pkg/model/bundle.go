@@ -249,6 +249,7 @@ func (b *Bundle) GoString() string {
 func (b *Bundle) LoadValues(src source.Source) (*Bundle, error) {
 	values, err := src.Load(b.ctx, &source.LoadOptions{
 		Env:                   b.env,
+		ModuleRoot:            b.sourcePath,
 		InstanceConfiguration: configureValuesInstance,
 	})
 	if err != nil {

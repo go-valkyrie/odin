@@ -81,7 +81,7 @@ func newTemplateCmd() *cobra.Command {
 		PreRunE: c.PreRunE,
 		RunE:    c.RunE,
 	}
-	cmd.Flags().StringArrayVarP(&c.valuesFiles, "values", "f", []string{}, "Values files")
+	cmd.Flags().StringArrayVarP(&c.valuesFiles, "values", "f", []string{}, "Values files (prefix with \"yaml:\", \"json:\", or \"cue:\" to force a format; \"cue:\" locations must be directories and are loaded as independent CUE modules)")
 	cmd.Flags().StringVar(&c.namespace, "namespace", "", "Namespace to use for @tag(namespace) in CUE")
 
 	return cmd

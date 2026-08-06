@@ -16,9 +16,14 @@ import (
 type InstanceConfiguration func(inst *build.Instance) error
 
 type LoadOptions struct {
-	Env                   []string
-	Tags                  []string
-	TagVars               map[string]load.TagVar
+	Env     []string
+	Tags    []string
+	TagVars map[string]load.TagVar
+	// ModuleRoot, when set, pins cue/load.Config.ModuleRoot for the default
+	// (untagged/yaml:/json:) values group in Values.Load, anchoring CUE's
+	// nested-module check to the bundle's own directory instead of the
+	// process's working directory. Ignored by local.Load and ociSource.Load.
+	ModuleRoot            string
 	InstanceConfiguration InstanceConfiguration
 }
 
