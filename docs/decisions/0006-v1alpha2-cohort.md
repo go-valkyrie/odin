@@ -320,10 +320,15 @@ Bundle authors migrating from `v1alpha1` to `v1alpha2`:
    definitions → `extension`, template-side trait matching →
    `implements` (with interface kinds as `#Interface`). Trait constructor
    definitions such as `#env` remain definitions.
-6. Move platform modules and bundles to CUE language v0.18 and run
-   `cue fix --exp=explicitopen,aliasv2`. Prefix aliases (`C=…`,
-   `[Name=string]`) are not accepted at v0.18, and embedding a
-   definition now closes the enclosing struct unless spread with `...`.
+6. Move platform modules and bundles to CUE language v0.18 when
+   convenient, one module at a time, running
+   `cue fix --exp=explicitopen,aliasv2` as each one moves. Prefix aliases
+   (`C=…`, `[Name=string]`) are not accepted at v0.18, and embedding a
+   definition closes the enclosing struct unless spread with `...`.
+   Modules can stay on v0.17 while they import the v0.18 api (see
+   *Mixed language versions* below), so this need not happen in one
+   step. CUE's breaking changes between language versions mean each
+   module's migration should be tested on its own.
 
 Bundles that do not adopt `v1alpha2` continue to render under
 `v1alpha1` indefinitely, modulo the established `compat` levels in
@@ -350,10 +355,21 @@ The following were considered as candidates and explicitly deferred:
   individual ADRs each have their own open questions; this umbrella
   moves to Accepted once they all do (or at least once their open
   questions are reduced to non-blocking sub-decisions).
-- **Mixed language versions across modules.** Can a platform module
-  still at CUE language v0.17 import the v0.18 `api/v1alpha2` module, or
-  must every module in a composition graph move together? Untested;
-  needs a prototype before the cohort is accepted.
+- **Mixed language versions across modules.** Prototyped on CUE
+  v0.18.0-rc.3 with a local registry: the v0.18 api (functions
+  experiment), a platform module at language v0.17 written in v0.17
+  syntax (prefix aliases, embedding `api.#Extension` without a spread),
+  and a bundle module at v0.17. The v0.18 evaluator rendered the bundle
+  correctly, including traits and helper function calls from the v0.17
+  module, and rejected both a config typo and a trait typo. So modules
+  can migrate independently. This covers one sample, not every CUE
+  breaking change; real platform modules should be checked the same way
+  before the cohort is accepted.
+
+  The api requires an Odin built on CUE v0.18. CUE v0.17.1 cannot load
+  it, and reports `no files in package directory with package name
+  "v1alpha2"` rather than naming the language version. Odin should
+  detect this case and say that the api needs a newer Odin.
 - **`v1alpha1` deprecation horizon.** The current decision is "support
   indefinitely." A real horizon — measured in releases or calendar
   time — should be considered once `v1alpha2` adoption is meaningful.
