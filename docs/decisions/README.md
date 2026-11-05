@@ -42,6 +42,8 @@ messages and code comments are the right home for those.
 | 0004 | [Standard recommended labels](0004-standard-recommended-labels.md) | Proposed  |
 | 0005 | [Bundle defaults layering](0005-bundle-defaults-layering.md)       | Proposed  |
 | 0006 | [`v1alpha2` schema cohort](0006-v1alpha2-cohort.md)         | Proposed  |
+| 0007 | [Standard component wiring: handles, traits and extensions](0007-component-handles-and-traits.md) | Proposed  |
+| 0008 | [YAML bundle format](0008-yaml-bundle-format.md)            | Proposed  |
 
 ## Index — by cohort
 
@@ -55,3 +57,4 @@ forces these to land together; the GVK is the cross-version gate.
 - 0003 — Namespace as a schema field
 - 0004 — Standard recommended labels
 - 0005 — Bundle defaults layering
+- 0007 — Standard component wiring: handles, traits and extensions

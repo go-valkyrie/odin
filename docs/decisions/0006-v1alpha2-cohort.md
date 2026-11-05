@@ -13,7 +13,7 @@ so they do not each have to repeat it.
 
 ## Context
 
-ADRs 0001 through 0005 evolve the bundle schema across four
+ADRs 0001 through 0005, plus 0007, evolve the bundle schema across five
 intersecting concerns:
 
 - **Composition** (0001) — `#BundleRef` lets a bundle import another
@@ -25,6 +25,9 @@ intersecting concerns:
   `metadata.partOf`, `#bundleMetadata` slot.
 - **Defaults** (0005) — `defaults` block, deprecation of `*value` for
   config defaults.
+- **Wiring** (0007) — standard `ref`, `traits`, `extension` and
+  `implements` fields on `#ComponentBase`, plus standard `#Trait` and
+  `#Interface` types.
 
 Each individual change is additive in isolation. They could in
 principle ship one at a time as minor versions of the api module
@@ -59,6 +62,7 @@ inscrutable closedness chains.
 | 0003 | [Namespace as a schema field](0003-namespace-as-schema-field.md) | Identity field on `_#ObjectMeta` |
 | 0004 | [Standard recommended labels](0004-standard-recommended-labels.md) | Labeling helpers + `partOf` field + `#bundleMetadata` slot |
 | 0005 | [Bundle defaults layering](0005-bundle-defaults-layering.md) | `defaults` block; primary GVK-gate rationale lives here |
+| 0007 | [Standard component wiring: handles, traits and extensions](0007-component-handles-and-traits.md) | `ref`, `traits`, `extension`, `implements` fields; `#Trait`, `#Interface` |
 
 Each constituent ADR is independently consequential and stands on its
 own merits within the cohort. None are blocked on the others'
@@ -66,7 +70,7 @@ acceptance, but all ship as one release of the api module.
 
 ## Decision
 
-ADRs 0001–0005 ship together as `api/v1alpha2`. The api module retains
+ADRs 0001–0005 and 0007 ship together as `api/v1alpha2`. The api module retains
 `api/v1alpha1` as a parallel path for bundles built before this
 generation. The Go loader uses branching decoders dispatched on
 `apiVersion` to handle both.
@@ -98,6 +102,11 @@ Bundle authors migrating from `v1alpha1` to `v1alpha2`:
    in the bundle's `defaults` block.
 4. Update label helpers to use `selectorLabels` (in selectors) and
    `commonLabels` (everywhere else) (per ADR 0004).
+5. Move handles, traits and extension points to the standard fields
+   (per ADR 0007): `#ref` → `ref`, `#traits` → `traits`, extension-point
+   definitions → `extension`, template-side trait matching →
+   `implements` (with interface kinds as `#Interface`). Trait constructor
+   definitions such as `#env` remain definitions.
 
 Bundles that do not adopt `v1alpha2` continue to render under
 `v1alpha1` indefinitely, modulo the established `compat` levels in
@@ -136,5 +145,5 @@ The following were considered as candidates and explicitly deferred:
 
 - `api/COMPAT.md` — schema-evolution rules; the cohort-bump trigger
   is documented there.
-- Constituent ADRs 0001–0005 (table above).
+- Constituent ADRs 0001–0005 and 0007 (table above).
 - Future ADR — `app.kubernetes.io/version` label semantics.
