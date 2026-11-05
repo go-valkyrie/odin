@@ -51,7 +51,8 @@ Define a YAML representation of `v1alpha2` bundles that:
 
 - **YAML component templates.** Templates remain CUE.
 - **A general expression language in YAML.** No arithmetic,
-  conditionals or comprehensions. Bundles that need them use CUE (see
+  conditionals or comprehensions. The only computation is calling a
+  function with literal arguments (see *Path grammar*). Bundles that need them use CUE (see
   *Mixing YAML and CUE*).
 - **YAML values files.** These are already supported.
 - **`v1alpha1` support.**
@@ -172,15 +173,14 @@ A component accepts exactly these keys; anything else is an error:
 | `config`   | `config`                                      |
 | `traits`   | `traits` (0007)                               |
 | `extension` | `extension` (0007) — set extension points directly, without a trait |
-| `defs`     | `#<name>` for each entry — sets arbitrary definition fields for patterns that aren't standardized |
 
 `ref` and `implements` are set by templates, never by bundles, so they
 are not component keys.
 
-`defs` keeps the format generic without requiring quoted `"#name"`
-keys. With 0007 standardizing extension points, it is expected to be
-rare. An unquoted `#` at the start of a YAML token begins a comment,
-which would silently drop the field.
+There is no way to set arbitrary definition fields from YAML. Writing
+into definitions is the silent-typo pattern 0007 removes, and 0007's
+standard fields cover what bundles set. Anything else goes in a `.cue`
+file alongside the YAML.
 
 ### Template references
 
@@ -293,10 +293,12 @@ deployer.
 ### Path grammar
 
 ```
-path     := "components" "." name ( "." surface ( "." field )* )?
-          | "values" ( "." field )+
-          | "metadata" ( "." field )+
-surface  := "metadata" | "config" | "ref" | "#" ident
+path     := ( "components" "." name ( "." surface ( "." field )* )?
+            | "values" ( "." field )+
+            | "metadata" ( "." field )+ ) call?
+call     := "(" ( literal ( "," literal )* )? ")"
+literal  := string | number | bool
+surface  := "metadata" | "config" | "ref" | "extension" | "#" ident
 name     := ident | quoted
 field    := ident | quoted | "#" ident
 ```
@@ -305,8 +307,19 @@ field    := ident | quoted | "#" ident
   `components.<name>.ref`.
 - `values.components.*` is rejected. Use `components.<name>.config.*`,
   which is the merged result, so each value has exactly one path.
-- `resources`, `traits`, `extension`, `implements`, `apiVersion`,
-  `kind` and `_hidden` fields of a component are not referenceable. Only the public surface is.
+- `extension` gives YAML the identity helpers from 0002 and 0004. Use
+  `!ref components.api.extension.resourceName("cache")` rather than
+  interpolating `metadata.instance` directly: `instance` is null in
+  single-instance bundles and YAML has no conditionals to guard it,
+  while `resourceName` handles the null case.
+- A path may end in a function call with literal arguments only. Calls
+  keep references statically analyzable: the call target is a path and
+  the arguments are constants. Inside `!fmt`, single-quote the YAML
+  scalar so the string argument needs no escaping:
+  `!fmt '{components.api.extension.resourceName("cache")}.svc'`.
+- `resources`, `traits`, `implements`, `apiVersion`, `kind` and
+  `_hidden` fields of a component are not referenceable. Only the public
+  surface is.
 
 ### Where tags may appear
 

@@ -246,6 +246,9 @@ deprecated in favor of `defaults` blocks (see Cross-cutting sub-decisions).
 - C2 lets template authors ship canonical defaults via the new
   mechanism and gives the internal schema a place to roll them up
   automatically. Bigger schema change but better ergonomics.
+- C2 is also what lets traits contribute overridable defaults through
+  `apply: defaults` (ADR 0007). Under C1 a trait can only set fixed
+  values.
 
 ### Option D — Augment composition with provenance
 

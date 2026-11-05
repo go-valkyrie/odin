@@ -86,10 +86,11 @@ Provide standard Kubernetes recommended labels as helpers on
   unit. Sub-bundle components see the sub-bundle's metadata, not the
   parent's. This falls out for free if the wiring is per-`#Bundle`.
 - **CUE definition closedness.** Schema changes must work with closed
-  definitions: new fields on `_#ObjectMeta` are additions to the
-  definition; auxiliary surfaces on `#ComponentBase` should use
-  definition slots (`#foo: ...`) rather than regular fields, since
-  closedness rejects ad-hoc field additions but not definitions.
+  definitions. Fields the schema itself declares can be regular fields:
+  closedness only rejects fields the schema does not know about, and it
+  catches typos that definition slots would let through (see ADR 0007).
+  Helpers and wiring data live under the component's `extension` struct,
+  where traits can read them.
 
 ## Decision
 
@@ -109,7 +110,7 @@ _#ObjectMeta: {
 Default null means the corresponding label is omitted unless the bundle
 author or composition mechanism sets a value.
 
-Add a definition slot `#bundleMetadata` on `#ComponentBase` so each
+Add `bundleMetadata` under `#ComponentBase`'s `extension` struct so each
 component can see its bundle's metadata:
 
 ```cue
@@ -118,27 +119,30 @@ component can see its bundle's metadata:
     metadata: _#ObjectMeta
     config:    {...}
     resources: [string]: {...}
-    #bundleMetadata: _#ObjectMeta
+    extension: {
+        bundleMetadata: _#ObjectMeta
+        ...
+    }
     ...
 }
 ```
 
-`#bundleMetadata` is a definition slot, not a regular field, so it
-bypasses closedness when being filled in by `#Bundle`'s wiring. Definitions
-also are not module-namespaced (unlike hidden fields), so external bundle
-modules can populate it.
+`bundleMetadata` is a regular field declared by the schema, so `#Bundle`'s
+wiring can fill it in without any closedness issue. Unlike a hidden field
+it is not package-scoped, so external bundle modules can populate it, and
+because it lives under `extension` traits can read it (ADR 0007).
 
 ### Internal schema wiring
 
-`#Bundle` populates each component's `#bundleMetadata` with its own
-metadata:
+`#Bundle` populates each component's `extension.bundleMetadata` with its
+own metadata:
 
 ```cue
 #Bundle: {
-    M=metadata: _#ObjectMeta
-    C=components: [Name=string]: #ComponentBase & {
+    metadata~M: _#ObjectMeta
+    components: [string]~(Name, _): #ComponentBase & {
         config: values.components[Name]
-        #bundleMetadata: M
+        extension: bundleMetadata: M
     }
     ...
 }
@@ -150,26 +154,35 @@ bundle values as well).
 
 ### Helpers
 
-Replace 0002's `commonLabels` with two helpers on `#ComponentBase`.
+Replace 0002's `commonLabels` with two helpers under `#ComponentBase`'s
+`extension` struct.
 
 ```cue
 #ComponentBase: {
+    let C = self
     ...
-    selectorLabels: {[string]: string} | *{
-        "app.kubernetes.io/name":      #bundleMetadata.name
-        "app.kubernetes.io/component": metadata.name
-        if metadata.instance != null {
-            "app.kubernetes.io/instance": metadata.instance
+    extension: {
+        selectorLabels: {[string]: string} | *{
+            "app.kubernetes.io/name":      bundleMetadata.name
+            "app.kubernetes.io/component": C.metadata.name
+            if C.metadata.instance != null {
+                "app.kubernetes.io/instance": C.metadata.instance
+            }
         }
+        commonLabels: {[string]: string} | *(selectorLabels & {
+            "app.kubernetes.io/managed-by": "odin"
+            if C.metadata.partOf != null {
+                "app.kubernetes.io/part-of": C.metadata.partOf
+            }
+        })
+        ...
     }
-    commonLabels: {[string]: string} | *(selectorLabels & {
-        "app.kubernetes.io/managed-by": "odin"
-        if metadata.partOf != null {
-            "app.kubernetes.io/part-of": metadata.partOf
-        }
-    })
 }
 ```
+
+A trait can add a label by writing
+`apply: extension: commonLabels: team: "payments"`. In a prototype against
+CUE v0.17.1 this kept the standard labels and added the new one.
 
 `selectorLabels` is the selector-stable subset: identity that does not
 change between deployments of the same logical thing. `commonLabels` is
@@ -184,9 +197,9 @@ addressed in a follow-up ADR.
 Authoring guidance:
 
 - **Selectors** (`spec.selector.matchLabels`, the selector subset of
-  `spec.template.metadata.labels`) use `selectorLabels`.
+  `spec.template.metadata.labels`) use `extension.selectorLabels`.
 - **Resource labels** (everywhere else `metadata.labels` appears) use
-  `commonLabels`.
+  `extension.commonLabels`.
 
 Both helpers are exposed as defaults (`*expr | T`), so authors can
 override or extend by unification when convention does not fit.
@@ -197,7 +210,7 @@ Each `#Bundle` is its own labeling boundary because the wiring is per-
 `#Bundle`. Concretely:
 
 - A top-level bundle's components see the top-level bundle's metadata
-  via `#bundleMetadata`. Their `app.kubernetes.io/name` is the top-level
+  via `extension.bundleMetadata`. Their `app.kubernetes.io/name` is the top-level
   bundle's name.
 - A sub-bundle pulled in via `#BundleRef` (ADR 0001) is itself a
   `#Bundle` value, so its components see the sub-bundle's metadata via
@@ -247,17 +260,18 @@ the revisions can land together.
   cross-version gate (see ADR 0005).
 - **Build-up pattern.** `commonLabels` is `selectorLabels` plus extras,
   so authors who customize one composes naturally with the other.
-- **Generalizable.** The `#bundleMetadata` slot is reusable for any
-  future helper that needs bundle-level identity from a component.
+- **Generalizable.** `extension.bundleMetadata` is reusable for any
+  future helper that needs bundle-level identity from a component, and
+  traits can read it too.
 
 ### Negative
 
 - **Two helper concepts.** Authors must learn the
   `selectorLabels`/`commonLabels` split. Documentation needs to make
   the convention explicit.
-- **`#bundleMetadata` is a new public surface.** It is a definition
-  slot consumers can reference, which expands the api's exposed
-  vocabulary slightly.
+- **`extension.bundleMetadata` is a new public surface.** Consumers and
+  traits can reference it, which expands the api's exposed vocabulary
+  slightly.
 - **Single-component bundles get redundant labels.** A bundle with one
   component carries both `name` and `component` even though they are
   effectively the same identity layer. Trivial overhead but visually
@@ -334,12 +348,6 @@ is acceptable.
   Helm. `coreLabels` and `identityLabels` are alternatives. `selectorLabels`
   is more discoverable to readers familiar with Helm's vocabulary;
   this ADR defaults to it.
-- **`#bundleMetadata` vs an alternative wiring mechanism.** A definition
-  slot is the closedness-friendly option, but other approaches (an
-  exported field, a hidden field that the api reflects through some
-  other convention) might be cleaner. The current proposal works; if
-  the wiring story for the broader composition machinery settles on a
-  different pattern, this should align with it.
 - **Single-component bundle redundancy.** A bundle with one component
   emits both `name` and `component` carrying identical-or-near-identical
   identity. Acceptable today but worth revisiting if the noise becomes

@@ -22,7 +22,8 @@ intersecting concerns:
   `metadata.namespace` as first-class schema fields, with loader-side
   injection.
 - **Labeling** (0004) — `selectorLabels`/`commonLabels` helpers,
-  `metadata.partOf`, `#bundleMetadata` slot.
+  `metadata.partOf`, `bundleMetadata` (all helpers under the component's
+  `extension` struct, per 0007).
 - **Defaults** (0005) — `defaults` block, deprecation of `*value` for
   config defaults.
 - **Wiring** (0007) — standard `ref`, `traits`, `extension` and
@@ -36,7 +37,7 @@ the schema *generations* matter more than individual additions:
 
 - A `v1alpha2` `#BundleRef` expects to find the new fields
   (`metadata.instance`, `metadata.namespace`, `metadata.partOf`,
-  `#bundleMetadata`, `defaults`) on the value its `#bundle` field is
+  `extension.bundleMetadata`, `defaults`) on the value its `#bundle` field is
   bound to.
 - A `v1alpha1` sub-bundle does not have those fields. CUE definition
   closedness rejects field additions, so attempting to compose a
@@ -60,7 +61,7 @@ inscrutable closedness chains.
 | 0001 | [Bundle composition](0001-bundle-composition.md)            | Trigger — the change that forces the cohort to exist |
 | 0002 | [Multi-instance support](0002-multi-instance-support.md)    | Identity field on `_#ObjectMeta` |
 | 0003 | [Namespace as a schema field](0003-namespace-as-schema-field.md) | Identity field on `_#ObjectMeta` |
-| 0004 | [Standard recommended labels](0004-standard-recommended-labels.md) | Labeling helpers + `partOf` field + `#bundleMetadata` slot |
+| 0004 | [Standard recommended labels](0004-standard-recommended-labels.md) | Labeling helpers + `partOf` field + `extension.bundleMetadata` |
 | 0005 | [Bundle defaults layering](0005-bundle-defaults-layering.md) | `defaults` block; primary GVK-gate rationale lives here |
 | 0007 | [Standard component wiring: handles, traits and extensions](0007-component-handles-and-traits.md) | `ref`, `traits`, `extension`, `implements` fields; `#Trait`, `#Interface` |
 
@@ -74,6 +75,13 @@ ADRs 0001–0005 and 0007 ship together as `api/v1alpha2`. The api module retain
 `api/v1alpha1` as a parallel path for bundles built before this
 generation. The Go loader uses branching decoders dispatched on
 `apiVersion` to handle both.
+
+`api/v1alpha2` is authored at CUE language version v0.18 and enables
+CUE's `functions` experiment (used by 0002's `resourceName` helper). Odin's
+`cuelang.org/go` dependency moves to v0.18 with it; `api/v1alpha1` keeps
+its current language version. Depending on an experiment is consistent
+with an alpha API: if CUE changes the experiment's semantics, `v1alpha2`
+follows, and the next GVK bump is where that settles.
 
 `v1alpha1` bundles continue to:
 - Load and render at the top level.
@@ -100,13 +108,18 @@ Bundle authors migrating from `v1alpha1` to `v1alpha2`:
    define their own config schema do this in the template; bundles
    that supply default values for a sub-bundle's components do this
    in the bundle's `defaults` block.
-4. Update label helpers to use `selectorLabels` (in selectors) and
-   `commonLabels` (everywhere else) (per ADR 0004).
+4. Update label helpers to use `extension.selectorLabels` (in
+   selectors) and `extension.commonLabels` (everywhere else) (per ADRs
+   0004 and 0007).
 5. Move handles, traits and extension points to the standard fields
    (per ADR 0007): `#ref` → `ref`, `#traits` → `traits`, extension-point
    definitions → `extension`, template-side trait matching →
    `implements` (with interface kinds as `#Interface`). Trait constructor
    definitions such as `#env` remain definitions.
+6. Move platform modules and bundles to CUE language v0.18 and run
+   `cue fix --exp=explicitopen,aliasv2`. Prefix aliases (`C=…`,
+   `[Name=string]`) are not accepted at v0.18, and embedding a
+   definition now closes the enclosing struct unless spread with `...`.
 
 Bundles that do not adopt `v1alpha2` continue to render under
 `v1alpha1` indefinitely, modulo the established `compat` levels in
@@ -133,6 +146,10 @@ The following were considered as candidates and explicitly deferred:
   individual ADRs each have their own open questions; this umbrella
   moves to Accepted once they all do (or at least once their open
   questions are reduced to non-blocking sub-decisions).
+- **Mixed language versions across modules.** Can a platform module
+  still at CUE language v0.17 import the v0.18 `api/v1alpha2` module, or
+  must every module in a composition graph move together? Untested;
+  needs a prototype before the cohort is accepted.
 - **`v1alpha1` deprecation horizon.** The current decision is "support
   indefinitely." A real horizon — measured in releases or calendar
   time — should be considered once `v1alpha2` adoption is meaningful.

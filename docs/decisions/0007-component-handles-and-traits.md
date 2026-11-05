@@ -89,8 +89,9 @@ Standardize handles, traits, extension points and trait matching on
 - which traits a component accepts can be determined from data, without
   evaluation;
 - traits work across modules;
-- traits can read their target's metadata and config, and contribute to
-  its `config`, `resources` and extension points;
+- traits can read their target's metadata, config and identity helpers
+  (0002, 0004), and contribute to its `config`, `defaults`, `resources`
+  and extension points;
 - interface kinds can declare what templates implementing them must
   expose;
 - platform modules keep control of what extension points and interface
@@ -149,6 +150,7 @@ Standardize handles, traits, extension points and trait matching on
     // `implements`, `apiVersion` or `kind`.
     apply: {
         config?:    {...}
+        defaults?:  {...}   // requires 0005 option C2
         resources?: [string]: {...}
         extension?: {...}
     }
@@ -156,20 +158,28 @@ Standardize handles, traits, extension points and trait matching on
     ...
 }
 
-#ComponentBase: C={
+#ComponentBase: {
+    let C = self
     ...
     // A handle other components use to refer to this one.
     ref?: _
     // Interfaces this component implements, beyond its own kind.
     implements?: [...#Interface]
-    // Extension points. The shape is defined by the template.
-    extension?: {...}
+    // Identity helpers (0002, 0004) plus extension points defined by
+    // the template.
+    extension: {
+        bundleMetadata: _#ObjectMeta
+        resourceName:   *(...) | #ResourceNameFunc   // a function, see 0002
+        selectorLabels: {[string]: string} | *{...}
+        commonLabels:   {[string]: string} | *{...}
+        ...
+    }
     // Traits applied to this component.
     traits?: [...#Trait & {
         target: <own GVK, or the GVK of any entry in implements>
         target: metadata: C.metadata
     }]
-    for t in traits { t.apply }
+    for t in traits { t.apply... }
     for i in implements {
         if i.extension != _|_ { extension: i.extension }
         if i.config != _|_ { config: i.config }
@@ -187,11 +197,12 @@ and must be checked against the CUE version Odin pins.
 | Surface           | Kind       | Written by            | Read by                    |
 | ----------------- | ---------- | --------------------- | -------------------------- |
 | `metadata`        | field      | bundle                | anyone, including traits   |
-| `config`          | field      | bundle, traits        | template, anyone           |
+| `config`          | field      | bundle, traits        | template, traits, anyone   |
+| `defaults`        | field (0005) | bundle, traits      | Odin (loader walk)         |
 | `resources`       | field      | template, traits      | Odin (rendering)           |
 | `ref`             | field      | template              | other components           |
 | `implements`      | field      | template              | Odin (matching, conformance) |
-| `extension`       | field      | traits, bundle        | template                   |
+| `extension`       | field      | schema (identity helpers), template, traits, bundle | template, traits |
 | `traits`          | field      | bundle                | Odin schema (applies them) |
 | `#…` declarations | definition | template              | other components (trait constructors, extra handles) |
 
@@ -221,9 +232,53 @@ A trait can:
   relative form. For a trait targeting an
   interface, the interface's declared `config` shape is what the trait
   can rely on.
+- **Read its target's identity helpers** (`resourceName`,
+  `selectorLabels`, `commonLabels`, `bundleMetadata`) through
+  `extension`, the same way it reads config:
+
+  ```cue
+  pdbTrait: #Trait & {
+      apply: {
+          extension: {}
+          resources: pdb: {
+              metadata: name:   extension.resourceName("pdb")
+              metadata: labels: extension.commonLabels
+              spec: selector: matchLabels: extension.selectorLabels
+          }
+      }
+  }
+  ```
+
+- **Add labels** by writing to `extension.commonLabels`
+  (`apply: extension: commonLabels: team: "payments"`). The standard
+  labels are kept.
+- **Contribute defaults** through `apply: defaults`, which is unified into
+  the component's `defaults` (0005 option C2). A trait such as a
+  security-defaults trait can then set values deployers can still
+  override, without falling back to `*value` defaults.
 - **Contribute to `resources` and `extension`** through `apply`. Adding
   a resource (an HTTPRoute, a PodDisruptionBudget) or setting config
   needs no cooperation from the template.
+
+Three authoring rules follow from CUE resolving names lexically:
+
+- **Write `apply` as one block.** A reference such as `config.port`
+  resolves to the `config` written in the same struct literal. Splitting
+  it into `apply: config: …` and `apply: resources: …` lines leaves the
+  reference unresolved.
+- **Declare what you read.** Mention the struct you read from inside
+  `apply` (`extension: {}`, `config: port: int`). Its fields don't need to
+  be declared; they come from the component once embedded.
+- **Reach `target` through `self`.** `target` is declared by `#Trait`,
+  not by the literal, so a bare `target` reference is not found. Bind the
+  trait with `let`:
+
+  ```cue
+  pdbTrait: {
+      let T = self
+      #Trait & { apply: { … T.target.metadata.name … } }
+  }
+  ```
 
 Two consequences of CUE's evaluation model are worth stating for trait
 authors:
@@ -250,8 +305,17 @@ These semantics were checked in a scratch prototype against CUE v0.17.1:
 with references relative to `apply` and a plain
 `for t in traits { t.apply }`, a trait reads the component's config and
 its writes override template defaults (`*1 | int` → `3`); references
-from the trait root get an incomplete value; whole-component export fails
-only on the `traits` list.
+from the trait root get an incomplete value unless the base fills them in
+(as it does for `target.metadata`); a PDB trait renders its name and
+selector from the component's `extension` helpers; a trait adding a
+label to `commonLabels` keeps the standard labels; whole-component export
+fails only on the `traits` list. `apply: defaults` has not been
+prototyped, since it depends on 0005's loader walk.
+
+The same prototypes were re-run on CUE v0.18.0-rc.3 after
+`cue fix --exp=explicitopen,aliasv2` and at language version v0.18.0,
+with identical results. The sketches in this ADR use v0.18 syntax
+(`let C = self`, the `t.apply...` spread), per ADR 0006.
 
 `apply` is closed, so a trait cannot set `traits`, `ref`, `implements`,
 `apiVersion` or `kind`. That turns what would otherwise be a cycle or
@@ -260,13 +324,14 @@ error at the trait.
 
 ### `extension`
 
-The template's public extension points. The workload template would
-declare:
+Holds the identity helpers from 0002 and 0004, which the schema
+provides, plus the template's public extension points. The workload
+template would declare:
 
 ```cue
 extension: {
     containers: [string]: _#ContainerConfig
-    volumes: [Name=string]: schema.#VolumeSpec & {name: Name}
+    volumes: [string]~(Name, _): schema.#VolumeSpec & {name: Name}
 }
 ```
 
@@ -291,7 +356,7 @@ those templates must expose. The workload module would define:
     }
 }
 
-_#Workload: C=odin.#ComponentBase & {
+_#Workload: odin.#ComponentBase & {
     implements: [#WorkloadInterface]
     extension: { containers: ..., volumes: ... }
     // _allowedTraits, the #traits typing and the for-loop are removed.
@@ -405,14 +470,25 @@ Platform modules:
 - Trait constructors (`#env`, `#mount`, …) are unchanged apart from the
   above.
 
+Platform modules and bundles also move to CUE language v0.18 (ADR 0006):
+prefix aliases (`C=…`, `[Name=string]`) are no longer accepted and
+embedding is strict. `cue fix --exp=explicitopen,aliasv2` rewrites both.
+
 Bundle authors writing CUE: `mygateway.#ref` → `mygateway.ref`,
-`#traits: [...]` → `traits: [...]`.
+`#traits: [...]` → `traits: [...]`, and the 0002/0004 helpers are read
+as `extension.resourceName`, `extension.selectorLabels` and
+`extension.commonLabels`.
 
 ## Open questions
 
-- **Trait access to `metadata`.** Traits can read the target's metadata
-  but not write it. Is there a need for traits to add labels or
-  annotations at the component level, beyond what `config` exposes?
+- **Trait resource keys.** Two traits that both add `resources: pdb`
+  either merge silently (if their contents unify) or conflict. This is
+  0001's name-collision problem at the trait level. Traits have no name
+  of their own to prefix keys with. Is a key convention enough, or does
+  `#Trait` need an identity field?
+- **`apply: defaults` and 0005.** Trait-contributed defaults only work if
+  0005 settles on option C2 (`defaults` on `#ComponentBase`). This is an
+  argument for C2.
 - **Sub-bundle handles.** Should a `#BundleRef` (0001) be able to expose
   a `ref`, so components can attach to a composed sub-bundle?
 - **Multiple handles.** Is one `ref` plus `@odin(ref)` declarations

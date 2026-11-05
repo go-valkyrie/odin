@@ -114,30 +114,46 @@ Injection follows a presence-and-concreteness check:
 
 ### Authoring helpers
 
-`#ComponentBase` exposes two derived fields whose values default to the
-canonical multi-instance conventions. Bundle and template authors can use
+`#ComponentBase` exposes two derived fields, under its `extension` struct
+(see ADR 0007), whose values default to the canonical multi-instance
+conventions. Bundle and template authors can use
 them directly or override them by unification when a different convention
 is required.
 
 ```cue
+@experiment(functions)
+
+#Name:             string & =~"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" & strings.MaxRunes(63)
+#ResourceNameFunc: func(suffix: string = "") -> #Name
+
 #ComponentBase: {
+    let C = self
     ...
     metadata: _#ObjectMeta
-    resourceName: string | *[
-        if metadata.instance != null { "\(metadata.instance)-\(metadata.name)" },
-        metadata.name,
-    ][0]
-    commonLabels: {[string]: string} | *{
-        "app.kubernetes.io/name": metadata.name
-        if metadata.instance != null {
-            "app.kubernetes.io/instance": metadata.instance
+    extension: {
+        resourceName: *(#ResourceNameFunc & func(suffix: string = "") -> #Name: strings.Join([
+            if C.metadata.instance != null { C.metadata.instance },
+            C.metadata.name,
+            if suffix != "" { suffix },
+        ], "-")) | #ResourceNameFunc
+        commonLabels: {[string]: string} | *{
+            "app.kubernetes.io/name": C.metadata.name
+            if C.metadata.instance != null {
+                "app.kubernetes.io/instance": C.metadata.instance
+            }
         }
+        ...
     }
 }
 ```
 
-`resourceName` produces the conventional resource name — instance-prefixed
-when an instance is set, the bare component name otherwise. `commonLabels`
+`resourceName` is a function (CUE's `functions` experiment, adopted for
+`v1alpha2` per ADR 0006). `resourceName()` produces the conventional
+resource name — instance-prefixed when an instance is set, the bare
+component name otherwise — and `resourceName("pdb")` appends a suffix, the
+pattern templates and traits otherwise write by hand for every secondary
+resource. Its result type `#Name` rejects names that are not valid
+DNS-1123 labels or exceed 63 characters, wherever the helper is used. `commonLabels`
 produces the standard `app.kubernetes.io/{name,instance}` pair, omitting
 `instance` when the bundle is single-instance. Both default branches handle
 the null case so authors do not reproduce the conditional in every
@@ -146,13 +162,15 @@ component.
 The fields are exposed as defaults (`*expr | T`), not enforced computations.
 Authors can override at three levels by unification:
 
-- **Per-component**: directly set `resourceName` or `commonLabels` on a
-  component instance.
+- **Per-component**: directly set `extension.resourceName` or
+  `extension.commonLabels` on a component instance. An override of
+  `resourceName` must match `#ResourceNameFunc`, so it still returns a
+  valid `#Name`; one declared to return a plain `string` is rejected.
 - **Per-bundle**: define a local `#ComponentBase` wrapper that pins a
   different convention, e.g.
   ```cue
   #ComponentBase: odin.#ComponentBase & {
-      resourceName: "\(metadata.name)-\(metadata.instance)"
+      extension: resourceName: func(suffix: string = "") -> #Name: "\(metadata.name)-\(metadata.instance)"
   }
   ```
 - **Per-component-template**: a component template can pin its own
@@ -161,7 +179,8 @@ Authors can override at three levels by unification:
 
 Public field names (rather than hidden `_resourceName`) are required because
 hidden identifiers in CUE are package-scoped and not visible to consumer
-modules.
+modules. They live under `extension` so that traits (ADR 0007) can read
+them when naming and labeling the resources they add.
 
 ### Templating responsibility
 
@@ -221,6 +240,10 @@ conditional. Authoring guidance will document:
   or `commonLabels` must guard the null case themselves; failing to do so
   produces a CUE evaluation error in single-instance mode. Authoring
   guidance should steer authors toward the helpers as the default path.
+- **Depends on a CUE experiment.** `resourceName` uses CUE's `functions`
+  experiment, whose semantics changed during the v0.18 pre-releases.
+  This is acceptable for an alpha API (see ADR 0006) but means the helper
+  may need to follow changes in CUE.
 - **Silent inactivity on old schemas.** A `--instance` flag passed against
   a bundle whose schema predates the field has no effect. The loader needs
   an explicit policy (error by default, with an opt-in lenient mode) to
@@ -288,7 +311,10 @@ explicit keeps Odin's contract narrow.
   to DNS-1123 label form) so that it is always safely interpolatable into
   resource names, or leave it permissive and let bundle authors constrain
   per-bundle? Permissive is simpler today but constraint at the API level
-  would prevent a class of bundle-author mistakes.
+  would prevent a class of bundle-author mistakes. Partly addressed by
+  `resourceName`'s `#Name` result type: an invalid instance surfaces at
+  the first resource named with the helper. Constraining `instance`
+  itself is still open.
 - **Authoring guidance home.** Where does the templating convention live —
   CONTRIBUTING, a separate authoring guide under `docs/`, or a cookbook?
 
