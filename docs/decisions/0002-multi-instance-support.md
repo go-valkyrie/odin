@@ -38,7 +38,7 @@ We need a per-deployment identifier such that:
 - It composes cleanly with the bundle composition mechanism described in
   ADR 0001 — a parent bundle pinning a sub-bundle's instance must take
   precedence over Odin's runtime injection.
-- It rides in the `v1alpha2` cohort (see ADR 0005) so that composition
+- It rides in the `v1alpha2` cohort (see ADR 0006) so that composition
   with sub-bundles can rely on every participant seeing the same schema.
 
 ## Non-goals
@@ -61,7 +61,7 @@ We need a per-deployment identifier such that:
   schema version the bundle was authored against.
 - **Cohort with v1alpha2.** This change is additive in isolation but
   ships as part of the `v1alpha2` cohort (composition + identity +
-  labels + defaults — see ADR 0005). The cohort's GVK gate is what
+  labels + defaults + wiring — see ADR 0006). The cohort's GVK gate is what
   makes composition surface cross-version mismatches as a single clean
   unification error instead of a chain of closedness errors deep in
   the tree.
@@ -75,7 +75,7 @@ We need a per-deployment identifier such that:
 
 ### Schema change
 
-Add `instance` to `_#ObjectMeta` in `api/v1alpha1`:
+Add `instance` to `_#ObjectMeta` in `api/v1alpha2`:
 
 ```cue
 _#ObjectMeta: {
@@ -281,7 +281,7 @@ sibling cohort.
 
 Rejected because in isolation this addition is purely additive and does
 not justify the cost of parallel decoders. The bump that does happen —
-to `v1alpha2` — is driven by ADR 0005's cohort reasoning, not by this
+to `v1alpha2` — is driven by the cohort reasoning in ADR 0006, not by this
 change on its own.
 
 ### Field on `#Bundle` and `#ComponentBase` directly

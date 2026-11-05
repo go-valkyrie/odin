@@ -52,7 +52,7 @@ Provide standard Kubernetes recommended labels as helpers on
 - The labels compose cleanly with bundle composition (ADR 0001) — each
   `#Bundle` forms its own labeling boundary, so sub-bundle resources
   carry the sub-bundle's name in `name`, not the parent's.
-- The change rides in the `v1alpha2` cohort (see ADR 0005) for the
+- The change rides in the `v1alpha2` cohort (see ADR 0006) for the
   composition-gate reasons documented there.
 
 ## Non-goals
@@ -169,7 +169,9 @@ Replace 0002's `commonLabels` with two helpers under `#ComponentBase`'s
                 "app.kubernetes.io/instance": C.metadata.instance
             }
         }
-        commonLabels: {[string]: string} | *(selectorLabels & {
+        // Labels added by traits or bundles; merged into commonLabels.
+        extraLabels: {[string]: string}
+        commonLabels: {[string]: string} | *(selectorLabels & extraLabels & {
             "app.kubernetes.io/managed-by": "odin"
             if C.metadata.partOf != null {
                 "app.kubernetes.io/part-of": C.metadata.partOf
@@ -180,9 +182,15 @@ Replace 0002's `commonLabels` with two helpers under `#ComponentBase`'s
 }
 ```
 
-A trait can add a label by writing
-`apply: extension: commonLabels: team: "payments"`. In a prototype against
-CUE v0.17.1 this kept the standard labels and added the new one.
+Traits and bundles add labels through `extraLabels`
+(`apply: extension: extraLabels: team: "payments"`), not by writing into
+`commonLabels`. On CUE v0.18.0-rc.3, a trait writing into `commonLabels`
+directly dropped the identity labels whenever the template closed its
+extension (ADR 0007), because `commonLabels` is a default disjunction.
+Through `extraLabels`, the identity labels and the added label both
+survive on open and closed templates. Replacing `commonLabels` outright
+by unification still works for templates that need a different
+convention.
 
 `selectorLabels` is the selector-stable subset: identity that does not
 change between deployments of the same logical thing. `commonLabels` is
@@ -257,7 +265,7 @@ the revisions can land together.
   boundary, sub-bundles included. No special-casing needed.
 - **Lands cleanly in the v1alpha2 cohort.** Additive in isolation;
   ships under `v1alpha2` so composition can rely on the GVK as a
-  cross-version gate (see ADR 0005).
+  cross-version gate (see ADR 0006).
 - **Build-up pattern.** `commonLabels` is `selectorLabels` plus extras,
   so authors who customize one composes naturally with the other.
 - **Generalizable.** `extension.bundleMetadata` is reusable for any
@@ -363,8 +371,12 @@ is acceptable.
   `0001-bundle-composition.md`
 - Sibling ADR (namespace as schema field, same v1alpha2 cohort):
   `0003-namespace-as-schema-field.md`
-- Sibling ADR (defaults layering, motivates the `v1alpha2` bump):
+- Sibling ADR (defaults layering, same v1alpha2 cohort):
   `0005-bundle-defaults-layering.md`
+- Cohort ADR (`v1alpha2` rationale and migration):
+  `0006-v1alpha2-cohort.md`
+- Sibling ADR (component wiring; the helpers live under `extension`):
+  `0007-component-handles-and-traits.md`
 - Kubernetes recommended labels:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 - Helm chart labels and selector labels conventions:

@@ -216,7 +216,7 @@ Template shape (lives in the Odin API, authored once):
 
 ```cue
 #BundleRef: #ComponentBase & {
-    apiVersion: "odin.go-valkyrie.com/v1alpha1"
+    apiVersion: "odin.go-valkyrie.com/v1alpha2"
     kind:       "BundleRef"
     bundle: #Bundle
     config: bundle.values
@@ -507,7 +507,10 @@ CUE.
   values? Does the parent's `values.yaml` reach into sub-bundle values, or
   does each bundle bring its own defaults?
 - Does the migration path for existing bundles require a format bump, and if
-  so, how does the `compat` policy handle it?
+  so, how does the `compat` policy handle it? The format bump is now
+  decided: composition ships in the `v1alpha2` cohort
+  ([0006](0006-v1alpha2-cohort.md)). The `compat` interaction remains
+  open.
 
 ## Consequences
 

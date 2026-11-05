@@ -85,7 +85,8 @@ migration note. Doing it later would cost another bump.
 Standardize handles, traits, extension points and trait matching on
 `#ComponentBase`, so that:
 
-- typos and mismatches are schema errors;
+- typos and mismatches are schema errors wherever a template opts into
+  closing its config or extension (see *Closing is opt-in*);
 - which traits a component accepts can be determined from data, without
   evaluation;
 - traits work across modules;
@@ -166,12 +167,11 @@ Standardize handles, traits, extension points and trait matching on
     // Interfaces this component implements, beyond its own kind.
     implements?: [...#Interface]
     // Identity helpers (0002, 0004) plus extension points defined by
-    // the template.
+    // the template. Open; see *Closing is opt-in*.
     extension: {
-        bundleMetadata: _#ObjectMeta
-        resourceName:   *(...) | #ResourceNameFunc   // a function, see 0002
-        selectorLabels: {[string]: string} | *{...}
-        commonLabels:   {[string]: string} | *{...}
+        _extensionHelpers   // bundleMetadata, componentMetadata,
+                            // resourceName, selectorLabels, extraLabels,
+                            // commonLabels
         ...
     }
     // Traits applied to this component.
@@ -249,9 +249,10 @@ A trait can:
   }
   ```
 
-- **Add labels** by writing to `extension.commonLabels`
-  (`apply: extension: commonLabels: team: "payments"`). The standard
-  labels are kept.
+- **Add labels** by writing to `extension.extraLabels`
+  (`apply: extension: extraLabels: team: "payments"`), which
+  `commonLabels` merges in. Writing into `commonLabels` directly drops the
+  standard labels on templates that close their extension (see 0004).
 - **Contribute defaults** through `apply: defaults`, which is unified into
   the component's `defaults` (0005 option C2). A trait such as a
   security-defaults trait can then set values deployers can still
@@ -269,9 +270,11 @@ Three authoring rules follow from CUE resolving names lexically:
 - **Declare what you read.** Mention the struct you read from inside
   `apply` (`extension: {}`, `config: port: int`). Its fields don't need to
   be declared; they come from the component once embedded.
-- **Reach `target` through `self`.** `target` is declared by `#Trait`,
-  not by the literal, so a bare `target` reference is not found. Bind the
-  trait with `let`:
+- **Reach `target` and trait parameters through `self`.** `target` is
+  declared by `#Trait`, not by the literal, so a bare `target` reference
+  is not found. A parameter with the same name as the field it sets
+  refers to itself (`extraLabels: team: team`). Bind the trait with
+  `let`:
 
   ```cue
   pdbTrait: {
@@ -299,7 +302,8 @@ authors:
   it only validates `config` and exports `resources`. But `cue vet -c` or
   `cue export` over a whole bundle fails on them, and tools that export
   whole components (schema export, the YAML tooling in 0008) must skip
-  `traits` when checking concreteness.
+  `traits` when checking concreteness. The same applies to
+  `extension.resourceName`: function values cannot be exported to JSON.
 
 These semantics were checked in a scratch prototype against CUE v0.17.1:
 with references relative to `apply` and a plain
@@ -308,7 +312,7 @@ its writes override template defaults (`*1 | int` → `3`); references
 from the trait root get an incomplete value unless the base fills them in
 (as it does for `target.metadata`); a PDB trait renders its name and
 selector from the component's `extension` helpers; a trait adding a
-label to `commonLabels` keeps the standard labels; whole-component export
+label through `extraLabels` keeps the standard labels; whole-component export
 fails only on the `traits` list. `apply: defaults` has not been
 prototyped, since it depends on 0005's loader walk.
 
@@ -336,10 +340,54 @@ extension: {
 ```
 
 and read `extension.containers` / `extension.volumes` when rendering.
-Because a template definition closes its `extension` struct, a trait
-writing `apply: extension: contaners: ...` is rejected.
 
 Bundle authors may also set `extension` directly, without a trait.
+
+### Closing is opt-in
+
+`#ComponentBase` leaves `config` and `extension` open. Custom config is a
+feature: a template that declares nothing beyond the base accepts any
+config, as today. A template closes them by assigning definitions:
+
+```cue
+#DeploymentConfig: {image: string, replicas: *1 | int}
+#DeploymentExtension: {
+    api.#Extension...                     // the identity helpers
+    containers: [string]: {image: string, env: [...#EnvVar], ...}
+}
+
+#Deployment: api.#ComponentBase & {
+    config:    #DeploymentConfig
+    extension: #DeploymentExtension
+    ...
+}
+```
+
+- **Close the top level, keep merge targets open.** The extension's own
+  fields are closed, so a trait writing `apply: extension: contaners:`
+  is rejected at the trait. The structs traits merge into, such as each
+  container, end with `...`. A trait's nested contribution is closed
+  once it is embedded into the component, so a closed container type
+  would reject the template's own fields (`containers.main.image: field
+  not allowed`). Typos inside a container are therefore not caught.
+- **Spread `api.#Extension`, don't redeclare the helpers.** The api
+  writes the helpers once as a plain struct that the base embeds and
+  `#Extension` wraps. If the base and the template both referenced the
+  same definition, CUE v0.18 would close the struct back to the
+  helpers' fields when they are unified.
+- **`defaults` follows `config`.** A template that closes `config` can
+  assign the same definition to `defaults`.
+
+Checked on CUE v0.18.0-rc.3 against the combined sketch in 0006: with
+the Deployment closed this way, the env trait, a security-defaults trait
+and a PDB trait all merge as before; `imgae` in values and `contaners` in
+a trait are both rejected.
+
+The v1alpha1 platform modules in *Context* avoid the nested-closedness
+problem only because `#containers` is a definition, which closedness
+doesn't check.
+That workaround is what this ADR replaces, and leaving merge targets open
+is its replacement.
 
 ### Interfaces and `implements`
 
@@ -370,10 +418,14 @@ Two rules follow:
   the component's own `apiVersion`/`kind`, or the GVK of any interface in
   `implements`.
 - **Conformance.** Each implemented interface's `extension` and `config`
-  are unified into the component. A template that claims to implement
-  `Workload` but doesn't expose `extension.containers` fails because its
-  closed `extension` struct rejects the field. So a trait written against
-  an interface is guaranteed the extension points it relies on.
+  are unified into the component. For a template that closes its
+  extension (see *Closing is opt-in*), this is a check: one that claims
+  `Workload` but doesn't expose `extension.containers` fails with
+  `extension.containers: field not allowed`. For an open template it is
+  not a check: the interface's shape is simply added, and a trait
+  writing into it has no effect unless the template renders it. Odin can
+  lint that case (an open template implementing an interface), since
+  `implements` is concrete data.
 
 `target` and `implements` are concrete data, so Odin can index traits by
 GVK and answer "which traits fit this component?" without evaluating CUE.

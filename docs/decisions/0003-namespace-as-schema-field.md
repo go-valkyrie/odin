@@ -45,7 +45,7 @@ We need a first-class schema field for namespace so that:
   composition tooling) sees namespace alongside name and instance.
 - Composition can scope namespace per sub-bundle without an evaluation-
   global value.
-- The change rides in the `v1alpha2` cohort (see ADR 0005) for the same
+- The change rides in the `v1alpha2` cohort (see ADR 0006) for the same
   composition-gate reason as the other schema additions in the cohort.
 - Existing bundles using the `@tag(namespace)` mechanism continue to work
   unchanged.
@@ -81,7 +81,7 @@ We need a first-class schema field for namespace so that:
 
 ### Schema change
 
-Add `namespace` to `_#ObjectMeta` in `api/v1alpha1`, alongside the
+Add `namespace` to `_#ObjectMeta` in `api/v1alpha2`, alongside the
 `instance` field introduced by ADR 0002:
 
 ```cue
@@ -156,7 +156,7 @@ into resources the same way they interpolate `metadata.name`.
   the schema field.
 - **Lands cleanly in the v1alpha2 cohort.** Additive in isolation;
   ships under `v1alpha2` so composition can rely on the GVK as a
-  cross-version gate (see ADR 0005). Bundles still on `v1alpha1` keep
+  cross-version gate (see ADR 0006). Bundles still on `v1alpha1` keep
   using the tag-based mechanism unchanged.
 - **Forward-looking.** Establishes the schema-field surface that the tag
   mechanism can eventually be deprecated in favor of.
