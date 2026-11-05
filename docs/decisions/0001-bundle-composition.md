@@ -494,7 +494,9 @@ CUE.
   followed by referring to the package identifier works out of the box.
   Do we bless that as the convention, additionally encourage a named
   definition (e.g. `#Bundle`) for clarity, or require one? What, if
-  anything, does Odin check at import time?
+  anything, does Odin check at import time? YAML bundles (0008) compile
+  to a package whose top-level value is the bundle, and their `bundle:`
+  component key follows whichever convention is chosen here.
 - Is recursive composition supported in v1? If yes, what cycle detection do
   we need? If no, how do we explain the restriction?
 - Does attribution (resource → source sub-bundle) need a tooling path, and
